@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<esri:LabelDataRenderer xmlns:fx="http://ns.adobe.com/mxml/2009" 
+						xmlns:s="library://ns.adobe.com/flex/spark" 
+						xmlns:esri="http://www.esri.com/2008/ags"
+						xmlns:mx="library://ns.adobe.com/flex/mx"
+	label="{data.PDESC}">
+	<s:BorderContainer backgroundColor="white"
+					   borderColor="black"
+					   cornerRadius="5"
+					   minHeight="0"
+					   minWidth="0">
+		<s:layout>
+			<s:VerticalLayout paddingBottom="5"
+							  paddingLeft="5"
+							  paddingRight="5"
+							  paddingTop="5"/>
+		</s:layout>
+		
+		<s:Label fontWeight="bold" text="State Name: { data.STATE_NAME }"/>
+		<s:Label fontWeight="bold" text="Age (5-17): { data.AGE_5_17 }"/>
+		<s:Label fontWeight="bold" text="Age (18-64): { data.AGE_18_64 }"/>
+		<s:Label fontWeight="bold" text="Age (65 and above): { data.AGE_65_UP }"/>
+		
+	</s:BorderContainer>
+</esri:LabelDataRenderer>

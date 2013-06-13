@@ -1,0 +1,51 @@
+<?xml version="1.0" ?>
+<configuration>
+	<labels>
+		<legendLabel>Map Legend</legendLabel>
+		<layerDetailLabel>Layer Properties</layerDetailLabel>
+		
+		<scaleRangeLabel>Scale Range:</scaleRangeLabel>
+		<minScaleLabel>min:</minScaleLabel>
+		<maxScaleLabel>max:</maxScaleLabel>
+		<noScaleDependencyLabel>Not Scale Dependent</noScaleDependencyLabel>
+		<transparencyLabel>Transparency:</transparencyLabel>
+		<clientCachingLabel>Client Caching:</clientCachingLabel>
+		<spatialReferenceLabel>Spatial Reference:</spatialReferenceLabel>
+		<initialExtentLabel>Initial Extent:</initialExtentLabel>
+		<fullExtentLabel>Full Extent:</fullExtentLabel>
+		<descriptionLabel>Description:</descriptionLabel>
+		
+		<layerTypeLabel>Type:</layerTypeLabel>
+		<layerGeometryTypeLabel>Geometry:</layerGeometryTypeLabel>
+		<layerFilterLabel>Filter:</layerFilterLabel>
+		<layerHasAttachmentsLabel>Has Attachments:</layerHasAttachmentsLabel>
+		<layerExtentLabel>Extent:</layerExtentLabel>
+
+		<fieldsLabel>Fields:</fieldsLabel>
+		<fieldNameLabel>Name</fieldNameLabel>
+		<fieldTypeLabel>Type</fieldTypeLabel>
+		<fieldAliasLabel>Alias</fieldAliasLabel>
+		<fieldEditableLabel>Editable</fieldEditableLabel>
+		
+	</labels>
+	
+	<geometryService>
+		<url>http://sampleserver3.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer</url>
+	</geometryService>
+	
+	<usebasemaps>true</usebasemaps>
+    <useoperationallayers>true</useoperationallayers>
+    
+    <respectcurrentmapscale>true</respectcurrentmapscale>
+    
+    <excludelayer>wms_example</excludelayer>
+    <excludelayer>Bay_Orthos</excludelayer>
+    <excludelayer>Fires Edit</excludelayer>
+    
+    <displayMode>collapsed</displayMode>
+    
+    <filterEnabled>true</filterEnabled>
+    
+    <propertyEnabled>true</propertyEnabled>
+
+</configuration>

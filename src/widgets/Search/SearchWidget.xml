@@ -1,0 +1,34 @@
+<?xml version="1.0" ?>
+<configuration label="Water search">
+    <layers>
+        <layer>
+            <name>管线搜索</name>
+            <url>http://192.168.182.253:6080/arcgis/rest/services/Water/MapServer/1</url>
+            <expression>SSDZ like '[value]'</expression>
+            <textsearchlabel>通过所属地址搜索  [ 例如：南岳]</textsearchlabel>
+            <titlefield>所属地址</titlefield>
+            <linkfield></linkfield>
+            <fields all="false">
+                <field name="SSDZ"/>
+            </fields>
+        </layer>
+        <layer>
+            <name>阀门搜索</name>
+            <url>http://192.168.182.253:6080/arcgis/rest/services/Water/MapServer/0</url>
+            <expression>FMJDBH like '[value]'</expression>
+            <textsearchlabel>Search Police Stations by name... [ Example: 2ND DIVISION or 2%]</textsearchlabel>
+            <titlefield>阀门节点编号</titlefield>
+            <linkfield></linkfield>
+            <fields all="false">
+                <field name="FMJDBH"/>
+                <field name="FMCZ" alias="阀门材质"/>
+            </fields>
+        </layer>
+    </layers>
+    <zoomscale>10000</zoomscale>
+</configuration>
+
+<!--
+    See Search widget tag reference at
+    http://links.esri.com/searchwidget
+-->

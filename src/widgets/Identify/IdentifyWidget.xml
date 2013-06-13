@@ -1,0 +1,142 @@
+<?xml version="1.0"?>
+<configuration>
+	<identifylayeroption>visible</identifylayeroption>
+	<identifytolerance>5</identifytolerance>
+	<defaultzoomscale>5000</defaultzoomscale>
+	<keepidentifyactive>true</keepidentifyactive>
+	<returngeometryforzoom>true</returngeometryforzoom>
+	<enablelineselect>true</enablelineselect>
+	<enableextentselect>true</enableextentselect>
+	<enablepolyselect>true</enablepolyselect>
+	<enablemouseovergraphicsinfo>false</enablemouseovergraphicsinfo>
+	<enablemouseoverrecordinfo>false</enablemouseoverrecordinfo>
+	<enablegraphicclickinfo>false</enablegraphicclickinfo>
+	<usemaptime>false</usemaptime>
+	<infoautoclosemilliseconds>2000</infoautoclosemilliseconds><!-- 2 seconds -->
+	<autoactivatedtool>mappoint</autoactivatedtool><!-- possible values are extent or polygon or mappoint or polyline or nothing -->
+	<excludebasemaps>true</excludebasemaps>
+	<disablepopuplinks>false</disablepopuplinks>
+	<disablelayerdropdown>false</disablelayerdropdown>
+	<disablealllayerschoice>false</disablealllayerschoice>
+	<labels>
+		<zoom2message>Click to Zoom to Point</zoom2message>
+		<identifylabel>Identify</identifylabel>
+		<resultslabel>Results</resultslabel>
+		<descriptionlabel>选择工具在地图上标注属性:</descriptionlabel>
+		<pointlabel>用点标注</pointlabel>
+		<linelabel>划线标注</linelabel>
+		<rectlabel>用矩形标注</rectlabel>
+		<polylabel>用多边形标注</polylabel>
+		<clearlabel>清除</clearlabel>
+		<loadinglabel>Loading...</loadinglabel>
+		<removeresultmessage>Remove Result</removeresultmessage>
+		<idfrom>属性选择</idfrom>
+		<noresultsfoundlabel>没有查找到结果</noresultsfoundlabel>
+		<resultsfoundlabel>查找结果为：</resultsfoundlabel>
+		<alllayers>所有属性</alllayers>
+		<layersremaining>layers remaining:</layersremaining>
+	</labels>
+	<useproxy>
+		<!-- Enter the label of the MapService from the main config.xml -->
+		<!--<proxymapservice label="Imagery" />
+		<proxymapservice label="Streets" />-->
+	</useproxy>
+	<layers onlythese="false">
+			
+		<layer>
+			<name>管线</name>
+			<id>1</id>
+			<url>http://192.168.182.253:6080/arcgis/rest/services/Water/MapServer</url>
+			<fields>
+				<field name="GJ"
+					   alias="管径"/>
+				<field name="GC"
+					   alias="管材"/>
+				<field name="CD"
+					   alias="长度"/>					   
+				<field name="SSDZ"
+					   alias="所属地址"
+					   popuponly="true"/>
+			</fields>
+			<links>
+				<link includeinresults="false"
+					  field=""
+					  alias=""
+					  tooltip="">
+                    <linkprefix/>
+                    <linksuffix/>
+                    <iconfield/>
+                    <iconprefix/>
+                    <iconsuffix/>
+				</link>
+			</links>
+			<zoomscale>15000</zoomscale>
+			<forcescale>true</forcescale>
+		</layer>
+		<layer>
+			<name>阀门</name>
+			<id>0</id>
+			<url>http://192.168.182.253:6080/arcgis/rest/services/Water/MapServer</url>
+			<fields>
+				<field name="FMJDBH"
+					   alias="阀门结点编号"/>
+				<field name="FMLX"
+					   alias="阀门类型"/>
+				<field name="FMGG"
+					   alias="阀门规格"/>					   
+				<field name="FMCZ"
+					   alias="阀门材质"
+					   popuponly="true"/>
+			</fields>
+			<links>
+				<link includeinresults="false"
+					  field=""
+					  alias=""
+					  tooltip="">
+                    <linkprefix/>
+                    <linksuffix/>
+                    <iconfield/>
+                    <iconprefix/>
+                    <iconsuffix/>
+				</link>
+			</links>
+			<zoomscale>15000</zoomscale>
+			<forcescale>true</forcescale>
+		</layer>		
+		<!-- 
+		<excludelayer url="http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/Louisville/LOJIC_LandRecords_Louisville/MapServer"
+					  id="0"/>
+					   -->
+		<!-- <excludelayer url="http://sampleserver1.arcgisonline.com/ArcGIS/rest/services/Louisville/LOJIC_LandRecords_Louisville/MapServer" id="2"/> -->
+	</layers>
+
+	<symbols>
+		<simplefillsymbol color="0x448ccb"
+						  alpha="0.4"
+						  style="solid">
+			<outline color="0x448ccb"
+					 alpha="0.8"
+					 width="2"/>
+		</simplefillsymbol>
+		<simplemarkersymbol style="circle"
+							size="12"
+							color="0x448ccb"
+							alpha="0.8"
+							xoffset="0"
+							yoffset="0"
+							angle="0">
+			<outline style="solid"
+					 color="0xffffff"
+					 alpha="0.8"
+					 width="1"/>
+		</simplemarkersymbol>
+		<picturemarkersymbol url="assets/images/i_info.png"
+							 height="30"
+							 width="30"
+							 xoffset="0"
+							 yoffset="0"/>
+		<simplelinesymbol color="0x448ccb"
+						  alpha="0.8"
+						  width="2"/>
+	</symbols>
+</configuration>

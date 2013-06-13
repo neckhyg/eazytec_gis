@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<esri:CompositeSymbol
+	xmlns:fx="http://ns.adobe.com/mxml/2009" 
+	xmlns:s="library://ns.adobe.com/flex/spark" 
+	xmlns:esri="http://www.esri.com/2008/ags"
+	xmlns:mx="library://ns.adobe.com/flex/mx">
+	
+	<fx:Script>
+		<![CDATA[
+			import spark.components.Label;
+			import spark.components.DataRenderer;
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.Map;
+			
+			public function set styleName(value:String):void
+			{
+				InfoSymbol(this.symbols[1]).containerStyleName = value;
+				
+				
+			}
+			
+			
+			
+			
+		]]>
+	</fx:Script>
+	<esri:PictureMarkerSymbol id="imgHouse" source="assets/images/home1.png" width="24" height="24" yoffset="-12">
+		
+	</esri:PictureMarkerSymbol>
+	<esri:InfoSymbol id="isText">
+		
+		<esri:infoRenderer>
+			<fx:Component>
+				<s:DataRenderer>
+					<s:layout>
+						<s:VerticalLayout/>
+					</s:layout>
+					<fx:Script>
+						<![CDATA[
+							
+							import flash.external.*;  
+							protected function lblclickHandler(event:MouseEvent):void
+							{
+								// TODO Auto-generated method stub
+								
+								if (ExternalInterface.available){
+									ExternalInterface.call("showDetail",data.PID);
+								}
+								
+							}
+						]]>
+					</fx:Script>
+					
+					
+					
+					<s:Label id="lbl" text="{data.symbolText}" buttonMode="true" useHandCursor="true" click="lblclickHandler(event)"/>
+				</s:DataRenderer>
+			</fx:Component>
+		</esri:infoRenderer>
+	</esri:InfoSymbol>
+</esri:CompositeSymbol>

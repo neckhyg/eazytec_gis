@@ -1,0 +1,98 @@
+<?xml version="1.0"?>
+<configuration>
+    <!-- possible values for initialstate: open or closed (default) -->
+    <initialstate>closed</initialstate>
+    <dataLayer>http://192.168.2.33:6080/arcgis/rest/services/project/MapServer/0</dataLayer>
+    <!-- by default it will use the same basemap as current main map,
+         you can hardcode as below if you wish -->
+    <!-- <layer
+            type="tiled"
+            url="http://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer"/>
+    -->
+    <monitorInterval>60000</monitorInterval>
+    <IDField>PID</IDField>
+    <queryfields>
+    	<queryfield label="区属" type="combobox">
+    		<item label="不限" sql="" />	
+    		<item label="荷塘区" sql="LID=1"></item>
+    		<item label="芦淞区" sql="LID=2"></item>
+    		<item label="石峰区" sql="LID=3"></item>
+    		<item label="天元区" sql="LID=4"></item>
+    		<item label="云龙示范区" sql="LID=5"></item>
+   	</queryfield>
+    	<queryfield label="项目状态" type="combobox">
+    		<item label="不限" sql="" />	
+    		<item label="筹建" sql="PSTATE='XMCJ'" />
+    		<item label="在售" sql="PSTATE='XMZS'" />
+    		<item label="售完" sql="PSTATE='XMSW'" />
+    	</queryfield>
+    	<queryfield label="占地面积" type="combobox">
+    		<item label="不限" sql="" />	
+    		<item label="1万～2万平米">
+    			
+    		</item>
+    	</queryfield>
+    	<queryfield label="项目性质" type="combobox">
+    		<item label="不限" sql="" />	
+    		<item label="商品房" sql="PROPERTY=100001106401" />
+    		<item label="保障房" sql="PROPERTY=100001106402" />
+    		<item label="经济适用房" sql="PROPERTY=100001106403" />
+    		<item label="其他" sql="PROPERTY=100001106504" />   		
+    	</queryfield>
+    	
+    	<queryfield label="时间" type="combobox">
+    		<item label="不限" sql="" />	
+    	</queryfield>
+    	<queryfield label="建筑规模" type="combobox">
+    		<item label="不限" sql="" />
+    		<item label="1千～5千㎡" sql="BAREA&lt;5000" />
+    		<item label="5千～1万㎡" sql="BAREA&gt;=5000 AND BAREA&lt;10000" />	
+    		<item label="1万～5万㎡" sql="BAREA&gt;=10000 AND BAREA&lt;50000" />	
+    		<item label="5万～10万㎡" sql="BAREA&gt;=50000 AND BAREA&lt;100000" />	
+    		<item label="10万～90万㎡" sql="BAREA&gt;=100000 AND BAREA&lt;9000000" />	
+    		<item label="90万㎡以上" sql="BAREA&gt;=900000" />	
+    	</queryfield>
+    	
+    	<queryfield label="投资额" type="combobox">
+    		<item label="不限" sql="" />
+    		<item label="1000万以下" sql="TINVEST&lt;1000" />
+    		<item label="1000～5000万" sql="TINVEST&lt;5000 AND TINVEST&gt;=1000" />	
+    		<item label="5000万以上" sql="TINVEST&gt;=5000" />
+    	</queryfield>
+    </queryfields>
+    
+    <views>
+    	<view label="项目状态" type="unique" field="PSTATE" symbolFormat="项目：{PDESC}">
+    		<infos>
+	    		<info color="#666666" value="XMCJ" label="筹建"></info>
+	    		<info color="#00FF00" value="XMZS" label="在售"></info>
+	    		<info color="#FF0000" value="XMSW" label="售完"></info>
+	    		<info color="#FF0000" value="XMWC" label="完成"></info>
+    		</infos>
+    		<columns>
+    			<column caption="项目名称" field="PDESC" statistic="0" />
+    			<column caption="状态" field="PSTATE" statistic="0" />
+    			<column caption="总投资" field="TINVEST" statistic="1" />
+    			<column caption="面积" field="GROUNDAREA" statistic="1" />
+    		</columns>
+    	</view>
+    	<view label="投资额" type="class" field="TINVEST"  symbolFormat="{PDESC}&#13;投资额:{TINVEST}万">
+    		<infos>
+    			<info color="#0000FF"  maxvalue="1000" label="1000万以下"></info>
+    			<info color="#00FFFF" minvalue="1000" maxvalue="2000" label="1000～2000万"></info>
+    			<info color="#BBBBBB" minvalue="2000" maxvalue="5000" label="2000～5000万"></info>
+    			<info color="#00AABB" minvalue="5000" label="5000万以上"></info>
+    		</infos>
+    		<columns>
+    			<column caption="项目名称" field="PDESC" statistic="0" />
+    			<column caption="总投资" field="TINVEST" statistic="1" />
+    			<column caption="面积" field="GROUNDAREA" statistic="1" />
+    		</columns>
+    	</view>
+    </views>
+</configuration>
+
+<!--
+    See Overview Map widget tag reference at
+    http://links.esri.com/overviewmapwidget
+-->

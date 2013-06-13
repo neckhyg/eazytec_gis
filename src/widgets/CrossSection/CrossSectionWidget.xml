@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<configuration label="Draw and measure (default)">
+    <dataLayer>http://192.168.182.253:6080/arcgis/rest/services/Water/MapServer/1</dataLayer>
+</configuration>
+
+<!--
+    See Draw widget tag reference at
+    http://links.esri.com/drawwidget
+-->

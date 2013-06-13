@@ -1,0 +1,896 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+///////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2010-2011 Esri. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+///////////////////////////////////////////////////////////////////////////
+-->
+<viewer:BaseWidget xmlns:fx="http://ns.adobe.com/mxml/2009"
+                   xmlns:s="library://ns.adobe.com/flex/spark"
+                   xmlns:mx="library://ns.adobe.com/flex/mx"
+                   xmlns:viewer="com.esri.viewer.*"
+				   xmlns:esri="http://www.esri.com/2008/ags"
+				   xmlns:text="flash.text.*"
+				   xmlns:flare="com.esri.flare.*"
+                   layoutDirection="ltr"
+                   widgetConfigLoaded="init()" xmlns:ProjectQuery="widgets.ProjectQuery.*">
+    <!--
+         This is the OverviewMapWidget widget.
+         @@includeFiles widgets/OverviewMapWidget/OverviewMapComponent.mxml
+    -->
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@namespace mx "library://ns.adobe.com/flex/mx";
+		@namespace viewer "com.esri.viewer.*";
+		@namespace esri "http://www.esri.com/2008/ags";
+		@namespace text "flash.text.*";
+		
+	</fx:Style>
+	<fx:Declarations>
+		<esri:SimpleFillSymbol id="fillSymbol"
+							   
+							   color="0xFF6900"
+							   >
+			
+		</esri:SimpleFillSymbol>
+		<esri:SimpleMarkerSymbol id="triSym" color="red"
+								 size="15"
+								 style="triangle"/>
+		
+	<text:TextFormat id="tf"
+					 font="Arial"
+					 size="14"/>
+		<flare:ImageFlareSymbol id="imageFlareSymbol"
+								backgroundColors="[0xFF6900,0xFF9F00]"
+								backgroundWeights="[100,1000]"
+								borderColor="0xFFFFFF"
+								borderThickness="2"
+								ringDistanceStart="40"/>
+		<flare:BitmapFlareSymbol bitmapOffX="16" bitmapOffY="37"
+								 source="@Embed('assets/images/house.png')"
+								 textOffX="14" textOffY="35" id="worldFlareSymbol" />
+
+	<esri:FlareSymbol id="flareSymbol"
+					  backgroundAlphas="[0.5,1.0]"
+					  backgroundColors="[0x00FF00,0xFF0000]"
+					  flareMaxCount="30"
+					  flareSizeIncOnRollOver="3"
+					  sizes="[20,30]"
+					  textFormat="{tf}"
+					  weights="[30,60]"/>
+	<esri:WeightedClusterer id="clusterer" symbol="{worldFlareSymbol}" sizeInPixels="30" >
+		<esri:center>
+			<!--
+			x/y values are from the below extent x/y min/max values, these are the center of the extent.
+			To make sure that you have the same clusters every time and independently of the map size and extent, these values have to set explicity,
+			or you can let the cluster pick the map center at runtime.
+			-->
+			<esri:MapPoint x="{(-14477000-6677000)*0.5}" y="{(2273000+8399000)*0.5}"/>
+		</esri:center>
+	</esri:WeightedClusterer>
+	<esri:SimpleMarkerSymbol id="defaultsym"
+							 alpha="0.8"
+							 color="0xFF0000">
+		<esri:SimpleLineSymbol width="2" color="0xFFFFFF"/>
+	</esri:SimpleMarkerSymbol>
+		
+		
+
+		
+		
+
+		
+		
+		
+				
+			
+		 
+	</fx:Declarations>
+    <fx:Script>
+        <![CDATA[
+			import com.esri.ags.FeatureSet;
+			import com.esri.ags.Graphic;
+			import com.esri.ags.clusterers.supportClasses.Cluster;
+			import com.esri.ags.events.DrawEvent;
+			import com.esri.ags.events.FeatureLayerEvent;
+			import com.esri.ags.events.FlareEvent;
+			import com.esri.ags.events.FlareMouseEvent;
+			import com.esri.ags.events.GraphicEvent;
+			import com.esri.ags.events.LayerEvent;
+			import com.esri.ags.geometry.Extent;
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.geometry.Polyline;
+			import com.esri.ags.layers.FeatureLayer;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.renderers.ClassBreaksRenderer;
+			import com.esri.ags.renderers.UniqueValueRenderer;
+			import com.esri.ags.renderers.supportClasses.ClassBreakInfo;
+			import com.esri.ags.renderers.supportClasses.UniqueValueInfo;
+			import com.esri.ags.symbols.PictureMarkerSymbol;
+			import com.esri.ags.symbols.Symbol;
+			import com.esri.ags.tasks.QueryTask;
+			import com.esri.ags.tasks.supportClasses.Query;
+			import com.esri.ags.tools.DrawTool;
+			import com.esri.ags.utils.WebMercatorUtil;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.IList;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.rpc.AsyncResponder;
+			import mx.utils.ObjectUtil;
+			import mx.utils.StringUtil;
+			
+			import spark.components.ComboBox;
+			import spark.components.Label;
+			import spark.components.RadioButton;
+			import spark.layouts.FormLayout;
+			import spark.skins.spark.PanelSkin;
+			
+			private var fl:FeatureLayer;
+			private var ql:GraphicsLayer;
+			private var query:Query;
+			private var queryTask:QueryTask;
+			private var glowLayer:GraphicsLayer;
+			private var views:ArrayCollection;
+			private var needUpdateGrd:Boolean;
+			private var currentView:Object;
+			private var currentMode:String="viewall";
+			private var lastDrawnGraphic:Graphic;
+			private var drawStatus:String;
+			private var symbolFormat:String;
+			private var symbolFields:ArrayCollection;
+			
+			protected function fLayerUpdateHandler(event:LayerEvent):void
+			{
+				for (var i:Number = 0; i < fl.graphicProvider.length; i++)
+				{
+					var g:Graphic = fl.graphicProvider[i] as Graphic;
+					var sText:String = symbolFormat;
+					for(var j:Number = 0;j<symbolFields.length;j++)
+					{
+						sText = sText.replace("{"+j.toString()+"}",g.attributes[symbolFields[j]]);
+					}
+					g.attributes.symbolText=sText;
+				}
+				updateGridContent();
+				
+			}
+			
+			private function Offset(point:MapPoint):MapPoint
+			{
+				var newPoint:MapPoint = WebMercatorUtil.webMercatorToGeographic(point) as MapPoint;
+				newPoint.x += 0.006;
+				newPoint.y -= 0.002;
+				newPoint = WebMercatorUtil.geographicToWebMercator(newPoint) as MapPoint;
+				return newPoint;
+			}
+			
+			private function updateGridContent():void
+			{
+				if(needUpdateGrd)
+				{
+					clearGlow();
+					var results:ArrayCollection = new ArrayCollection;
+					var graphic:Graphic;
+					for (var i:Number = 0; i < fl.graphicProvider.length; i++)
+					{
+						graphic = fl.graphicProvider[i] as Graphic;
+						
+						var show:Boolean = false;
+						if(currentMode.toLowerCase()=="viewall")
+							show = true;
+						else if(currentMode.toLowerCase()=="viewextent")
+						{
+							if(map.extent.contains(graphic.geometry))
+								show = true;
+						}
+						else if (currentMode.toLowerCase()=="viewdrawextent")
+						{
+							if((lastDrawnGraphic.geometry as Extent).contains(graphic.geometry))
+								show = true;
+						}
+						if(show)
+						{
+							
+							var o:Object= graphic.attributes;
+							o.selected=false;
+							//if(graphic.geometry!=null)
+							//	graphic.geometry = Offset(graphic.geometry as MapPoint);
+							o.graphic = graphic;
+				            
+							
+							
+							results.addItem(o);
+						}
+						
+					}
+					grd.dataProvider = results;
+					this.statistics(currentView);
+					if(currentMode.toLowerCase()!="viewextent")
+						needUpdateGrd = false;
+				}
+			}
+			
+			protected function FlareMouseOver(event:FlareMouseEvent):void
+			{
+				//event.graphic.attributes.PDESC;
+				var g:Graphic = new Graphic(event.graphic.geometry);
+				
+				g.attributes = event.graphic.attributes;
+				//ql.add(g);
+	
+				
+			}
+			
+			protected function fLayer_graphicAddHandler(event:GraphicEvent):void
+			{
+				//event.graphic.addEventListener(MouseEvent.MOUSE_OVER, onMouseOverHandler);
+				
+			}
+			
+			private function onMouseOverHandler(event:MouseEvent):void
+			{
+				var gr:Graphic = Graphic(event.currentTarget);
+				//gr.visible = false;
+				//gr.visible = true;
+				
+				
+				
+			}
+
+
+			
+			private function createUI():void
+			{
+				
+				var fieldList:XMLList = configXML..queryfield;
+				var frm:spark.components.Form;
+				for (var i:int = 0; i < fieldList.length(); i++)
+				{
+					if(i<fieldList.length()/2)
+						frm=this.frmSearch1;
+					else
+						frm=this.frmSearch2;
+					if(fieldList[i].@type=="combobox")
+					{
+						//var frmItm:FormItem = new FormItem();
+						
+						//frmItm.height=25;
+						
+						//frmItm.width=150;
+						//frmItm.label = fieldList[i].@label;
+						var gp:HGroup = new HGroup();
+						gp.verticalAlign="middle";
+						var lbl:Label = new Label();
+						lbl.width=50;
+						lbl.text =  fieldList[i].@label;
+						gp.addElement(lbl);
+						var cb:ComboBox = new ComboBox();
+						cb.width=110;
+						
+						var cbItms:XMLList = fieldList[i]..item;
+						var ary:ArrayCollection = new ArrayCollection();
+						for(var j:int=0;j<cbItms.length();j++)
+						{
+							var o:Object={
+								label:cbItms[j].@label,
+									sql:cbItms[j].@sql
+							};
+							ary.addItem(o);
+						}
+						cb.dataProvider = ary;
+						if(cb.dataProvider.length>0)
+							cb.selectedIndex = 0;
+						
+						//frmItm.addElement(cb);
+						//frm.addElement(frmItm);
+						//frm.addChild(frmItm);
+						gp.addElement(cb);
+						frm.addElement(gp);
+					}
+				}
+				this.lyrout.addElement(frm);
+				
+			}
+			
+			private function generateSql():String
+			{
+				var sqls:ArrayList = new ArrayList();
+				for(var i:int=0;i<lyrout.numElements;i++)
+				{
+					var frm:spark.components.Form = lyrout.getElementAt(i) as spark.components.Form;
+					for(var j:int=0;j<frm.numElements;j++)
+					{
+						var frmItm:Object = frm.getElementAt(j);
+						if(frmItm is HGroup)
+						{
+							var o:Object = frmItm.getElementAt(1);
+							if(o is ComboBox)
+							{
+								var cb:ComboBox = o as ComboBox;
+								if(cb.selectedItem!=null)
+								{
+									sqls.addItem(cb.selectedItem.sql);
+								}
+							}
+						}
+					}
+				}
+				
+				var sql:String="";
+				for(var k:int=0;k<sqls.length;k++)
+				{
+					var s:String=String(sqls.getItemAt(k));
+					if(s!="")
+					{
+					
+						if(sql=="")
+							sql="("+s+")";
+						else
+							sql = sql + " AND ("+s+")";
+					}
+				}
+				return sql;
+			}
+			
+			
+			private function activeView(view:Object):void
+			{
+				currentView = view;
+				viewLegend.viewInfos = view.infos;
+				symbolFormat = view.symbolFormat;
+				symbolFields.removeAll();
+				var searchMode:RegExp = new RegExp("\{[a-zA-Z]+\}");
+				
+				var fields:Array= symbolFormat.match(searchMode);
+				for(var j:int=0;j<fields.length;j++)
+				{
+					symbolFormat = symbolFormat.replace(fields[j],"{"+j.toString()+"}");
+					
+					symbolFields.addItem(fields[j].substr(1,fields[j].length-2));
+				}
+				
+				if(view.type=="unique")
+				{
+					var ur:UniqueValueRenderer = new UniqueValueRenderer(view.field);
+					ur.infos = new Array();
+					
+					for(var i:int=0;i<view.infos.length;i++)
+					{
+						var uri:UniqueValueInfo = new UniqueValueInfo();
+						var cssStyleDeclaration:CSSStyleDeclaration = new CSSStyleDeclaration(".infoStyle"+i.toString());
+						cssStyleDeclaration.setStyle("backgroundColor",String(view.infos[i].color));
+						FlexGlobals.topLevelApplication.styleManager.setStyleDeclaration(".infoStyle"+i.toString(), cssStyleDeclaration, true);
+						
+						
+						var pis:ProjectInfoSymbol= new ProjectInfoSymbol();
+						pis.styleName = "infoStyle"+i.toString();
+						uri.symbol = pis;
+						uri.value = view.infos[i].value;
+						
+						ur.infos.push(uri);
+						
+					}
+					
+					fl.renderer = ur;
+					ql.renderer = ur;
+				}
+				else if(view.type=="class")
+				{
+					var cr:ClassBreaksRenderer = new ClassBreaksRenderer(view.field);
+					cr.infos = new Array();
+					for(i=0;i<view.infos.length;i++)
+					{
+						var cri:ClassBreakInfo = new ClassBreakInfo();
+						cssStyleDeclaration= new CSSStyleDeclaration(".infoStyle"+i.toString());
+						cssStyleDeclaration.setStyle("backgroundColor",String(view.infos[i].color));
+						FlexGlobals.topLevelApplication.styleManager.setStyleDeclaration(".infoStyle"+i.toString(), cssStyleDeclaration, true);
+						
+						
+						pis= new ProjectInfoSymbol();
+						
+						pis.styleName = "infoStyle"+i.toString();
+						cri.symbol = pis;
+						if(String(view.infos[i].minvalue)!="")
+							cri.minValue = view.infos[i].minvalue;
+						if(String(view.infos[i].maxvalue)!="")
+							cri.maxValue = view.infos[i].maxvalue;
+						
+						cr.infos.push(cri);
+						
+					}
+					
+					fl.renderer = cr;
+					ql.renderer =cr;
+					
+				}
+				while(grd.columns.length>1)
+					grd.columns.removeItemAt(1);
+				
+				for(i=0;i<view.columns.length;i++)
+				{
+					var cln:GridColumn = new GridColumn();
+					cln.headerText = view.columns[i].caption;
+					cln.dataField = view.columns[i].field;
+					grd.columns.addItem(cln);
+				}
+				statistics(view);
+			}
+				
+			private function activeViewByName(view:String):void
+			{
+				for(var i:int=0;i<views.length;i++)
+				{
+					if(views[i].label == view)
+					{
+						activeView(views[i]);
+						break;
+					}
+				}
+			}
+			
+			private function viewChange(evt:Event):void {
+				var rb:RadioButton = evt.currentTarget as RadioButton;
+				activeViewByName(rb.label);
+			}
+			
+			
+			private function loadViews():void
+			{
+				symbolFields = new ArrayCollection();
+				views = new ArrayCollection();
+				var viewList:XMLList = configXML..view;
+				for(var i:int=0;i<viewList.length();i++)
+				{
+					var view:Object={
+						type:viewList[i].@type,
+						label:viewList[i].@label,
+						field:viewList[i].@field,
+						symbolFormat:viewList[i].@symbolFormat
+					}
+					views.addItem(view);
+					var infoList:XMLList = viewList[i]..info;
+					view.infos=new Array();
+					var j:int;
+					var info:Object;
+					if(viewList[i].@type=="unique")
+					{
+						for(j=0;j<infoList.length();j++)
+						{
+							info={
+								color:infoList[j].@color,
+									value:infoList[j].@value,
+									label:infoList[j].@label
+									
+							}
+							view.infos.push(info);
+						}
+					}
+					else if(viewList[i].@type=="class")
+					{
+						for(j=0;j<infoList.length();j++)
+						{
+							 info={
+								color:infoList[j].@color,
+									minvalue:infoList[j].@minvalue,
+									maxvalue:infoList[j].@maxvalue,
+									label:infoList[j].@label
+							}
+							view.infos.push(info);
+						}
+					}
+					view.columns=new Array();
+					var columnList:XMLList = viewList[i]..column;
+					for(j=0;j<columnList.length();j++)
+					{
+						var column:Object={
+							caption:columnList[j].@caption,
+								field:columnList[j].@field,
+								statistic:columnList[j].@statistic
+						}
+						view.columns.push(column);
+					}
+					var rb:RadioButton = new RadioButton();
+					rb.addEventListener(Event.CHANGE,viewChange);
+					rb.label = viewList[i].@label;
+					if(i==0)
+						rb.selected = true;
+					grpViewRB.addElement(rb);
+					
+					
+				}
+				
+			}
+			
+			private function statistics(view:Object):void
+			{
+				if(grd.dataProvider==null)
+					return;
+				var sts:Array = new Array();
+				for(var i:int=0;i<view.infos.length;i++)
+					sts[i] = 0;
+				if(view.type == "unique")
+				{
+					for(i=0;i<grd.dataProvider.length;i++)
+					{
+						for(var j:int=0;j<view.infos.length;j++)
+						{
+							if(grd.dataProvider[i][view.field]==view.infos[j].value)
+								sts[j]++;
+						}
+					}
+					this.grpStatistics.removeAllElements();
+					for(j=0;j<view.infos.length;j++)
+					{
+						var l:Label = new Label();
+						l.text = view.infos[j].label+" "+sts[j];
+						this.grpStatistics.addElement(l);
+					}
+				}
+				else if(view.type=="class")
+				{
+					for(i=0;i<grd.dataProvider.length;i++)
+					{
+						for(j=0;j<view.infos.length;j++)
+						{
+							if(grd.dataProvider[i][view.field]>=view.infos[j].minvalue
+							&&grd.dataProvider[i][view.field]<view.infos[j].maxvalue)
+								sts[j]++;
+						}
+					}
+					this.grpStatistics.removeAllElements();
+					for(j=0;j<view.infos.length;j++)
+					{
+						l = new Label();
+						l.text = view.infos[j].label+" "+sts[j];
+						this.grpStatistics.addElement(l);
+					}
+				}
+			}
+			
+			/*private function statistics(view:Object):void
+			{
+				if(grd.dataProvider)
+				{
+					var s:String="";
+					for(var j:int=0;j<view.columns.length;j++)
+					{
+						if(view.columns[j].statistic=="1")
+						{
+							var sum:Number=0;
+							for(var i:int=0;i<grd.dataProvider.length;i++)
+							{
+								sum += grd.dataProvider[i][view.columns[j].field];	
+							}
+							s = s+view.columns[j].caption+":"+sum.toFixed(2)+" ";
+							}
+					}
+					this.lblStatistic.text = s;
+				}
+				
+			}*/
+			
+            private function init():void
+            {
+               createUI();
+			   loadViews();
+			   
+			   fl = new FeatureLayer(configXML.dataLayer);
+			   fl.mode="snapshot";
+			   fl.outFields=["*"];
+			   fl.definitionExpression="0=1";
+			   fl.clusterer= clusterer;
+			   var cf:ClassFactory = new ClassFactory(InfoWindowRenderer); 
+			   fl.infoWindowRenderer = cf;
+			   
+			   //fl.symbol = infoSymbol3;
+			   fl.addEventListener(LayerEvent.UPDATE_END,fLayerUpdateHandler);
+			   fl.addEventListener(FlareMouseEvent.FLARE_OVER,FlareMouseOver);
+			   fl.addEventListener(GraphicEvent.GRAPHIC_ADD,fLayer_graphicAddHandler);
+			   //var myRenderer : ClassFactory = new ClassFactory(MyRenderer);
+			   //fl.infoWindowRenderer = myRenderer;
+			   
+			   map.addLayer(fl);
+			   
+			   ql= new GraphicsLayer();
+			   map.addLayer(ql);
+			   
+			   
+			   //ql = new GraphicsLayer();
+			   //ql.graphicProvider=queryTask.executeLastResult.features;
+			   //ql.clusterer = clusterer;
+			   
+			   
+			   glowLayer = new GraphicsLayer();
+			   map.addLayer(glowLayer);
+			   
+			   currentMode = "viewall";
+			   if(views.length>0)
+				   activeViewByName(views[0].label);
+			   fl.refresh();
+			   
+			   
+			   
+			   
+            }
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				needUpdateGrd = true;
+				fl.definitionExpression = generateSql();
+				//fl.definitionExpression="TINVEST>100";
+				
+				
+			}
+			
+			protected function pnl_creationCompleteHandler(event:FlexEvent):void
+			{
+				// TODO Auto-generated method stub
+				var skin:PanelSkin = pnl.skin as PanelSkin;
+					
+				skin.topGroup.includeInLayout = false;
+				skin.topGroup.minHeight=0;
+					
+				skin.topGroup.visible = false;
+				pnl.height -= 25;
+			}
+			
+			private function glow(position:MapPoint):void
+			{
+				glowLayer.clear();
+				var graphicPointSym:PictureMarkerSymbol = new PictureMarkerSymbol("assets/images/red_glow.swf", 30, 30);
+				var graphic:Graphic = new Graphic(position,graphicPointSym);
+				glowLayer.add(graphic);
+			}
+			
+			private function clearGlow():void
+			{
+				glowLayer.clear();
+			}
+			
+			protected function grd_ClickHandler(event:MouseEvent):void
+			{
+				
+				clearGlow();
+				if(currentMode.toLowerCase()=="viewall")
+				{
+					
+					if(grd.selectedItem.graphic.geometry!=null)
+					{
+						map.level=16;
+						if(!map.extent.contains(grd.selectedItem.graphic.geometry))
+						{
+							
+							map.centerAt(MapPoint(grd.selectedItem.graphic.geometry));
+						}
+						glow(MapPoint(grd.selectedItem.graphic.geometry));
+					}
+				}
+				else
+					glow(MapPoint(grd.selectedItem.graphic.geometry)); 
+				//queryFeature(grd.selectedItem.OBJECTID);
+				
+			}
+			
+			
+			
+			protected function radioViewMode_changeHandler(event:Event):void
+			{
+				// TODO Auto-generated method stub
+				var rb:RadioButton = event.currentTarget as RadioButton;
+				if(rb==rbViewAll)
+				{
+					currentMode = "viewall";
+					rbViewExtent.selected = false;
+					rbViewDrawExtent.selected = false;
+					needUpdateGrd = true;
+					updateGridContent();
+				}
+				else if(rb==rbViewExtent)
+				{
+					currentMode="viewextent";
+					rbViewAll.selected = false;
+					rbViewDrawExtent.selected = false;
+					needUpdateGrd = true;
+					updateGridContent();
+				}
+				else if(rb==rbViewDrawExtent)
+				{
+					currentMode="viewdrawextent";
+					rbViewExtent.selected = false;
+					rbViewAll.selected = false;
+					drawStatus = "选择范围";
+					setMapAction(DrawTool.EXTENT, drawStatus, fillSymbol, map_drawEndHandler);
+				}
+				
+			}
+			
+			private function map_drawEndHandler(event:DrawEvent):void
+			{
+				
+				//event.target.deactivate();
+				
+				lastDrawnGraphic = event.graphic;
+				
+				
+				
+				var geom:Geometry = lastDrawnGraphic.geometry;
+				switch (geom.type)
+				{
+					
+					
+					case Geometry.EXTENT:
+					{
+						needUpdateGrd = true;
+						updateGridContent();
+						break;
+					}
+				}
+			}
+			
+			
+			
+			protected function btnCompareclickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				var selectedPID:String;
+				selectedPID="";
+				for (var i:Number = 0; i < grd.dataProvider.length; i++)
+				{
+					var o:Object = grd.dataProvider[i];
+					if(o.selected==true)
+					{
+						if(selectedPID=="")
+							selectedPID=o.PID;
+						else
+							selectedPID=selectedPID+","+o.PID;
+							
+					}
+				}
+				if(selectedPID=="")
+					showError("未选中项目！");
+				else
+					showError(selectedPID);
+			}
+			
+		]]>
+    </fx:Script>
+   <viewer:WidgetTemplate width="400" height="580" enableIcon="false" enableMinimizeButton="false">
+	   
+		<s:VGroup paddingLeft="0" paddingRight="0" gap="2">
+			<s:Panel title="查询条件" width="360" id="pnlPrj" styleName="searchPanel">
+				
+				<s:controlBarLayout >
+					
+					<s:HorizontalLayout paddingLeft="12" gap="5" horizontalAlign="right" /> 
+				</s:controlBarLayout>
+				
+			<s:HGroup  id="lyrout" paddingTop="0" paddingLeft="0">
+				<!--<mx:Form paddingTop="0" paddingLeft="0" width="50%" id="frmSearch1" >
+					
+				</mx:Form>-->
+				<s:Form id="frmSearch1" width="160">
+					<s:layout>
+						<s:FormLayout paddingTop="0" gap="1">
+							
+						</s:FormLayout>
+					</s:layout>
+				</s:Form>
+				<s:Form id="frmSearch2" width="160">
+					<s:layout>
+						<s:FormLayout paddingTop="0" gap="1">
+							
+						</s:FormLayout>
+					</s:layout>
+				</s:Form>
+				<!--<s:Form width="130" id="frmSearch1">
+					<s:layout>
+						<s:FormLayout paddingLeft="0" paddingRight="0" paddingBottom="0" paddingTop="0" gap="1">
+							
+						</s:FormLayout>
+					</s:layout>
+					
+					
+				</s:Form>
+				<s:Form width="160" id="frmSearch2">
+					
+				</s:Form>-->
+				
+			</s:HGroup>
+				
+				<s:controlBarContent >
+					
+					<s:Button id="btn" label="确定" click="button1_clickHandler(event)">	</s:Button>
+				</s:controlBarContent>
+
+			
+			</s:Panel>
+			
+			<s:Panel id="pnl" width="360" title="视角" minHeight="60">
+				<s:layout>
+					<s:VerticalLayout paddingTop="0" paddingBottom="0" gap="1" >
+						
+					</s:VerticalLayout>
+				</s:layout>
+			    <s:VGroup width="100%">
+				<s:HGroup id="grpViewRB">
+					
+				</s:HGroup>	
+				
+				<!--<mx:Form paddingBottom="0" paddingTop="5" verticalGap="1" >
+					
+					
+					
+					<s:FormItem id="viewRBFrm">
+						<s:layout>
+							<s:HorizontalLayout paddingLeft="2" gap="5" horizontalAlign="left" /> 
+						</s:layout>
+						
+					</s:FormItem>
+				</mx:Form>-->
+					<ProjectQuery:ViewLegend id="viewLegend" width="100%" paddingLeft="5" >
+						
+					</ProjectQuery:ViewLegend>
+				</s:VGroup>
+			</s:Panel>	
+			<s:HGroup  width="100%">
+				
+				<s:RadioButton label="属性过滤" id="rbViewAll" groupName="gpView" selected="true" change="radioViewMode_changeHandler(event)">
+					
+				</s:RadioButton>
+				<s:RadioButton label="可视范围" id="rbViewExtent" groupName="gpView"  selected="false" change="radioViewMode_changeHandler(event)">
+					
+				</s:RadioButton>
+				
+				<s:RadioButton label="手工选择" id="rbViewDrawExtent" groupName="gpView"  selected="false" change="radioViewMode_changeHandler(event)">
+					
+				</s:RadioButton>
+				<s:Button label="比较" click="btnCompareclickHandler(event)">
+					
+				</s:Button>
+			</s:HGroup>
+			<s:DataGrid id="grd" width="360" height="180" click="grd_ClickHandler(event)">
+				<s:columns>  
+					<s:ArrayList> 
+						<s:GridColumn dataField="Artist" headerText="选择" >
+							<s:itemRenderer>
+								<fx:Component>
+									<s:GridItemRenderer >
+										<s:CheckBox id="cbSelected" selected="{data.selected}" click="data.selected = !data.selected">
+											
+										</s:CheckBox>
+									</s:GridItemRenderer>
+								</fx:Component>
+							</s:itemRenderer>    
+						</s:GridColumn>
+						  
+						<s:GridColumn dataField="PDESC" headerText="名称" />  
+						<s:GridColumn dataField="TINVEST" headerText="总投资"/>
+						<s:GridColumn dataField="GROUNDAREA" headerText="面积"/>
+					</s:ArrayList>
+					
+				</s:columns> 
+			</s:DataGrid>
+			<s:TileGroup id="grpStatistics" width="100%">
+				
+			</s:TileGroup>
+						
+		</s:VGroup>
+		
+			
+		
+   </viewer:WidgetTemplate>
+</viewer:BaseWidget>

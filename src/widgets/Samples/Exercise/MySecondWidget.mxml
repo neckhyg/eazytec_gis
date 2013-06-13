@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<viewer:BaseWidget xmlns:fx="http://ns.adobe.com/mxml/2009" 
+				   xmlns:s="library://ns.adobe.com/flex/spark" 
+				   xmlns:mx="library://ns.adobe.com/flex/mx" 
+				   xmlns:viewer="com.esri.viewer.*" layout="absolute" width="400" height="300"
+				   xmlns:widgets="com.esri.solutions.flexviewer.widgets.*"
+				   widgetConfigLoaded="init()">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+		
+		
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.esri.ags.Graphic;
+			import com.esri.ags.events.DrawEvent;
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.geometry.MapPoint;
+			import com.esri.ags.tools.DrawTool;
+			import com.esri.ags.layers.GraphicsLayer;
+			
+			[Bindable]
+			private var graphicsLayer:GraphicsLayer;
+			private var lastDrawnGraphic:Graphic;
+			//this function called when the widget's configuration is loaded
+			private function init():void
+			{
+				if (configXML) // checking for valid content in the configuration file
+				{
+					//  lbl.text = configXML.content || getDefaultString("helloContent");
+					//lbl.text = "My First Widget";
+				}
+			}
+			private function centerMap():void {
+				//var point:MapPoint = new MapPoint(-118.24799,33.975004);
+				var point:MapPoint = new MapPoint(13333768.518,3678195.502);
+				map.centerAt(point);	
+			}	
+			private function queryMap():void
+			{
+				setMapAction(DrawTool.MAPPOINT, "Click Point",null, drawEnd);
+			}
+			private function drawEnd(event:DrawEvent):void
+			{
+				lastDrawnGraphic = event.graphic;
+				var geom:Geometry = lastDrawnGraphic.geometry;
+				var pt:MapPoint = geom as MapPoint
+				mx.controls.Alert.show("Get point location: " + pt.x + ", " + pt.y);
+			}
+			private function addPictureLayer():void
+			{
+				graphicsLayer = new GraphicsLayer();
+				graphicsLayer.visible = true;
+				
+				
+				graphicsLayer.name = "configXML.layername || widgetTitle";
+				
+				map.addLayer(graphicsLayer);
+			//	graphicsLayer.
+				
+		//		var graphicPointSym: PictureMarkerSymbol = new PictureMarkerSymbol(null, 30, 30);
+				
+
+			//	PictureMarkerSymbol graphicPointSym = new PictureMarkerSymbol(widgetIcon, 30, 30);
+				//GraphicsLayer graphicsLayer = new GraphicsLayer(); 
+			//	graphicsLayer.symbol = graphicPointSym; 
+				//map.addLayer(graphicsLayer);
+			}
+			
+		]]>
+	</fx:Script>	
+	<viewer:WidgetTemplate id="helloWorld"
+						   width="300" height="300">
+		<viewer:layout>
+			<s:VerticalLayout horizontalAlign="center" verticalAlign="middle"/>
+		</viewer:layout>
+		<!--
+		<s:Label id="lbl"
+		width="100%"
+		fontSize="18"
+		fontStyle="italic"
+		fontWeight="bold"/>
+		-->
+		<mx:Button click="centerMap()" label="地图居中" />
+		<mx:Button click="queryMap()" label="地图查询" />
+		<mx:Button click="addPictureLayer()" label="添加图层" />
+		
+	</viewer:WidgetTemplate>	
+</viewer:BaseWidget>

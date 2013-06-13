@@ -1,0 +1,63 @@
+<?xml version="1.0" ?>
+<configuration label="Earthquakes (last 7 days)">
+    <layer>http://192.168.182.253:6080/arcgis/rest/services/Water/MapServer/1</layer>
+    <!-- 
+    
+    <query>GC='铸铁'</query>
+    
+
+      <query>1=1</query>
+          
+           <query>GJ&gt;100 and GC='铸铁'</query>
+            -->
+            <query>GJ&gt;10 </query>
+    <titlefield>管径</titlefield>
+    <linkfield></linkfield>
+    <fields all="false">
+        <field name="GDBH"/>
+        <field name="GJ"/>
+        <field name="GC"/>
+         <field name="CD"/>
+         <field name = "SSDZ" />
+        <field name="JGRQ" alias="Date"/>
+    </fields>
+    <filterfield>
+    <!-- 
+        <name>GC</name>
+        <alias>通过管道材质过滤 (e.g., 钢，陶瓷 )</alias>
+         -->
+<name>SSDZ</name>
+        <alias>输入管线所属地址 (e.g.环科园 )</alias>        
+    </filterfield>
+    <refreshrate></refreshrate>
+    <!-- 
+    <zoomscale>500000</zoomscale>
+     -->
+	<materials>	
+			<item label='不限'/>
+			<item label='铸铁管'/>
+			<item label='塑料'/>
+			<item label='PVC'/>
+			
+	</materials>
+	<lineradus>	
+	    
+		<item label='200'/>
+		<item label='300'/>
+		<item label='500'/>
+		<item label='800'/>
+		<item label='1000'/>
+	</lineradus>
+	<conditions>	
+	    <item label='不限'/>
+	    <item label='等于'/>
+		<item label='大于'/>
+		<item label='小于'/>
+
+	</conditions>	
+</configuration>
+
+<!--
+    See Query widget tag reference at
+    http://links.esri.com/querywidget
+-->

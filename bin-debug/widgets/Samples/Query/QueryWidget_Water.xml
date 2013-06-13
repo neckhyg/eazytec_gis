@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<configuration label="Earthquakes (last 7 days)">
+    <layer>http://192.168.6.216:6080/arcgis/rest/services/Water/MapServer/1</layer>
+    <query>GJ&gt;30</query>
+    <titlefield>管径</titlefield>
+    <linkfield></linkfield>
+    <fields all="false">
+        <field name="GDBH"/>
+        <field name="GJ"/>
+        <field name="GC"/>
+         <field name="CD"/>
+        <field name="JGRQ" alias="Date"/>
+    </fields>
+    <filterfield>
+        <name>GC</name>
+        <alias>通过管道材质过滤 (e.g., 钢，陶瓷 )</alias>
+    </filterfield>
+    <refreshrate></refreshrate>
+    <!-- 
+    <zoomscale>500000</zoomscale>
+     -->
+</configuration>
+
+<!--
+    See Query widget tag reference at
+    http://links.esri.com/querywidget
+-->

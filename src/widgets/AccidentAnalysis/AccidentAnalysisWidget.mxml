@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+///////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2010-2011 Esri. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+///////////////////////////////////////////////////////////////////////////
+-->
+<viewer:BaseWidget xmlns:fx="http://ns.adobe.com/mxml/2009"
+                   xmlns:s="library://ns.adobe.com/flex/spark"
+                   xmlns:mx="library://ns.adobe.com/flex/mx"
+                   xmlns:viewer="com.esri.viewer.*"
+                   widgetConfigLoaded="init()"
+				   
+				   xmlns:esri="http://www.esri.com/2008/ags"
+				   >
+	
+	<fx:Declarations>
+		<esri:SimpleLineSymbol id="slsAccidentPipe" color="0x009966" width="5" alpha="1" style="solid" />
+		<esri:SimpleLineSymbol id="slsAffectedPipe" color="0xFF0000" width="5" alpha="1" style="solid" />
+		<esri:SimpleMarkerSymbol id="smsValve" color="0xFF0000" size="15" style="circle" />
+	</fx:Declarations>
+    <fx:Script>
+        <![CDATA[
+			import com.esri.ags.FeatureSet;
+			import com.esri.ags.Graphic;
+			import com.esri.ags.clusterers.supportClasses.Cluster;
+			import com.esri.ags.events.DrawEvent;
+			import com.esri.ags.events.ExtentEvent;
+			import com.esri.ags.events.FeatureLayerEvent;
+			import com.esri.ags.events.FlareEvent;
+			import com.esri.ags.events.FlareMouseEvent;
+			import com.esri.ags.events.GraphicEvent;
+			import com.esri.ags.events.LayerEvent;
+			import com.esri.ags.geometry.Extent;
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.geometry.MapPoint;
+			import com.esri.ags.geometry.Polyline;
+			import com.esri.ags.layers.FeatureLayer;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.renderers.ClassBreaksRenderer;
+			import com.esri.ags.renderers.UniqueValueRenderer;
+			import com.esri.ags.renderers.supportClasses.ClassBreakInfo;
+			import com.esri.ags.renderers.supportClasses.UniqueValueInfo;
+			import com.esri.ags.symbols.PictureMarkerSymbol;
+			import com.esri.ags.symbols.Symbol;
+			import com.esri.ags.tasks.QueryTask;
+			import com.esri.ags.tasks.supportClasses.Query;
+			import com.esri.ags.tools.DrawTool;
+			import com.esri.ags.utils.GraphicUtil;
+			import com.esri.ags.utils.WebMercatorUtil;
+			
+			import flash.filters.ColorMatrixFilter;
+			import flash.filters.GlowFilter;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.IList;
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.rpc.AsyncResponder;
+			import mx.utils.ObjectUtil;
+			import mx.utils.StringUtil;
+			
+			import org.osmf.events.TimeEvent;
+			
+			import spark.components.ComboBox;
+			import spark.components.Label;
+			import spark.components.RadioButton;
+			import spark.layouts.FormLayout;
+			import spark.skins.spark.PanelSkin;
+			
+			private var accidentPositionLayer:GraphicsLayer;
+			private var accidentPipeLayer:GraphicsLayer;
+			private var mustCloseValvesLayer:GraphicsLayer;
+			private var affectedPipesLayer:GraphicsLayer;
+			private var queryAccidentPipe:Query;
+			private var queryTask:QueryTask;
+			private var accidentPipes:ArrayCollection=new ArrayCollection();
+			
+			private var pipeFlushTimer:Timer;
+			
+            //this function called when the widget's configuration is loaded
+            private function init():void
+            {
+                if (configXML) // checking for valid content in the configuration file
+                {
+					accidentPipeLayer = new GraphicsLayer();
+					map.addLayer(accidentPipeLayer);
+					accidentPipeLayer.symbol = slsAccidentPipe;
+					accidentPositionLayer = new GraphicsLayer();
+					map.addLayer(accidentPositionLayer);
+					
+					mustCloseValvesLayer = new GraphicsLayer();
+					mustCloseValvesLayer.symbol = smsValve;
+					map.addLayer(mustCloseValvesLayer);
+					
+					affectedPipesLayer = new GraphicsLayer();
+					affectedPipesLayer.symbol = slsAffectedPipe;
+					map.addLayer(affectedPipesLayer);
+					
+					
+					queryAccidentPipe = new Query();
+					queryTask = new QueryTask();
+					queryTask.url = configXML.pipeLayer;
+					
+					pipeFlushTimer = new Timer(500);
+					pipeFlushTimer.addEventListener(TimerEvent.TIMER,pipeFlush);
+					
+					
+                }
+            }
+			
+			private function widgetClosedHandler(event:Event):void
+			{
+				accidentPipeLayer.visible = false;
+				accidentPositionLayer.visible = false;
+				affectedPipesLayer.visible = false;
+				mustCloseValvesLayer.visible = false;
+				pipeFlushTimer.stop();
+				
+			}
+			
+			private function widgetOpenedHandler(event:Event):void
+			{
+				accidentPipeLayer.visible = true;
+				accidentPositionLayer.visible = true;
+				affectedPipesLayer.visible = true;
+				mustCloseValvesLayer.visible = true;
+			}
+			
+			private function pipeFlush(event:TimerEvent):void
+			{
+				affectedPipesLayer.visible = !affectedPipesLayer.visible;
+			}
+			
+			private function simulateAccident():void
+			{
+				var position:MapPoint=new MapPoint(13333864.101,3678130.524);
+				accidentPositionLayer.clear();
+				var graphicPointSym:PictureMarkerSymbol = new PictureMarkerSymbol("assets/images/red_glow.swf", 30, 30);
+				var graphic:Graphic = new Graphic(position,graphicPointSym);
+				accidentPositionLayer.add(graphic);
+				
+				
+				queryAccidentPipe.where = "1=1";
+				queryAccidentPipe.outFields=["*"];
+				queryTask.url = configXML.pipeLayer;
+				queryAccidentPipe.returnGeometry = true;
+				
+				var mapWidth:Number = map.extent.width;
+				
+				//Divide width in map units by width in pixels
+				var pixelWidth:Number = mapWidth/map.width;
+				
+				//Calculate a 10 pixel envelope width (5 pixel tolerance on each side)
+				var tolerance:Number = 0.01;
+				
+				//Build tolerance envelope and set it as the query geometry
+				var queryExtent:Extent = new Extent(1,1,tolerance,tolerance);
+				queryAccidentPipe.geometry = queryExtent.centerAt(position);
+				
+				
+				queryTask.execute(queryAccidentPipe, new AsyncResponder(onResult, onFault));
+			
+					function onResult(featureSet:FeatureSet, token:Object = null):void
+					{
+						//accidentPipes.removeAll();
+						accidentPipeLayer.graphicProvider = queryTask.executeLastResult.features;
+						map.extent = queryTask.executeLastResult.features[0].geometry.extent;
+						
+						//for(var i:Number=0;i<queryTask.executeLastResult.features.length;i++)
+						//{
+						//	accidentPipes.addItem(queryTask.executeLastResult.features[i].attributes);
+						//}
+						grdPipes.dataProvider = queryTask.executeLastResult.attributes;
+						
+						btnAnalysis.enabled = true;
+					}
+					
+					function onFault(info:Object, token:Object = null):void
+					{
+						showError(info.toString());
+					}
+				
+			}
+			
+			protected function button1_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				simulateAccident();
+				
+			}
+			private function queryMustCloseValves():void
+			{
+				queryTask.url = configXML.valveLayer;
+				queryAccidentPipe.where = "BZ='G'";
+				queryAccidentPipe.returnGeometry = true;
+				
+				
+				queryAccidentPipe.geometry = null;
+				
+				
+				queryTask.execute(queryAccidentPipe, new AsyncResponder(onResult, onFault));
+				
+				function onResult(featureSet:FeatureSet, token:Object = null):void
+				{
+					mustCloseValvesLayer.clear();
+					mustCloseValvesLayer.graphicProvider = queryTask.executeLastResult.features;
+					grdValves.dataProvider = queryTask.executeLastResult.attributes;
+					
+					
+				}
+				
+				function onFault(info:Object, token:Object = null):void
+				{
+					showError(info.toString());
+				}
+			}
+			private function queryAffectedPipes():void
+			{
+				queryTask.url = configXML.pipeLayer;
+				queryAccidentPipe.where = "BZ='A'";
+				queryAccidentPipe.returnGeometry = true;
+				
+				
+				queryAccidentPipe.geometry = null;
+				
+				
+				queryTask.execute(queryAccidentPipe, new AsyncResponder(onResult, onFault));
+				
+				function onResult(featureSet:FeatureSet, token:Object = null):void
+				{
+					affectedPipesLayer.clear();
+					affectedPipesLayer.graphicProvider = queryTask.executeLastResult.features;
+					
+					pipeFlushTimer.start();
+				}
+				
+				function onFault(info:Object, token:Object = null):void
+				{
+					showError(info.toString());
+				}
+			}
+			
+			protected function btnViewAffected_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				queryAffectedPipes();
+			}
+			
+			protected function btnAnalysis_clickHandler(event:MouseEvent):void
+			{
+				// TODO Auto-generated method stub
+				queryMustCloseValves();
+			}
+			
+		]]>
+    </fx:Script>
+    <viewer:WidgetTemplate id="helloWorld"
+                           width="400" height="350"
+						   closed="widgetClosedHandler(event)"
+						   open="widgetOpenedHandler(event)">
+        <viewer:layout>
+            <s:VerticalLayout horizontalAlign="center" verticalAlign="top"/>
+        </viewer:layout>
+
+        <s:VGroup>
+			<s:HGroup>
+				<s:Button label="爆管点定位" click="button1_clickHandler(event)">
+					
+				</s:Button>
+				<s:Button id="btnAnalysis" label="爆管分析" enabled="false" click="btnAnalysis_clickHandler(event)">
+					
+				</s:Button>
+				<s:Button label="失效阀门" enabled="false">
+					
+				</s:Button>
+			</s:HGroup>
+			<s:VGroup  width="100%">
+				<s:Label text="爆管管线">
+					
+				</s:Label>
+				<mx:DataGrid width="300" height="80" id="grdPipes">
+					<mx:columns>  
+						
+						<mx:DataGridColumn dataField="GDBH" headerText="编号" />
+						<mx:DataGridColumn dataField="GC" headerText="管材" />	
+						<mx:DataGridColumn dataField="GJ" headerText="管径" />
+						<mx:DataGridColumn dataField="QDMS" headerText="起点埋深" />
+						<mx:DataGridColumn dataField="ZDMS" headerText="终点埋深" />
+					</mx:columns>
+				</mx:DataGrid>
+			</s:VGroup>
+			<s:VGroup>
+				<s:Label text="关闭阀门">
+					
+				</s:Label>
+				<mx:DataGrid width="300" height="120" id="grdValves">
+					<mx:columns>  
+						<mx:DataGridColumn dataField="BH" headerText="阀门编号" />
+						<mx:DataGridColumn dataField="DZ" headerText="地址" />	
+					</mx:columns>
+				</mx:DataGrid>
+			</s:VGroup>
+			<s:HGroup>
+				<s:Button id="btnViewAffected" label="查看影响区域" click="btnViewAffected_clickHandler(event)">
+					
+				</s:Button>
+				<s:Button label="导出爆管分析报告">
+					
+				</s:Button>
+			</s:HGroup>
+		</s:VGroup>
+    </viewer:WidgetTemplate>
+</viewer:BaseWidget>

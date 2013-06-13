@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:TileGroup xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		  xmlns:s="library://ns.adobe.com/flex/spark" 
+		  xmlns:mx="library://ns.adobe.com/flex/mx"
+		   columnAlign="left"
+		  
+		  
+		  horizontalAlign="justify"
+		  horizontalGap="6"
+		  orientation="rows"
+		  paddingBottom="0"
+		  paddingLeft="0"
+		  paddingRight="0"
+		  paddingTop="0"
+		  requestedColumnCount="-1"
+		  requestedRowCount="-1"
+		  rowAlign="top"
+		  
+		  rowHeight="0"
+		  verticalAlign="justify"
+		  verticalGap="12">
+	<fx:Declarations>
+		<!-- 将非可视元素（例如服务、值对象）放在此处 -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import mx.controls.Label;
+			
+			import spark.components.BorderContainer;
+			import spark.components.HGroup;
+			import spark.components.Label;
+			public function set viewInfos(value:Array):void
+			{
+				this.removeAllElements();
+				for(var i:int=0;i<value.length;i++)
+				{
+					var hg:HGroup = new HGroup();
+					var b:BorderContainer = new BorderContainer();
+					b.width=10;
+					b.height=10;
+					b.setStyle("backgroundColor",String(value[i].color));
+					hg.addElement(b);
+					var lbl:spark.components.Label=new spark.components.Label();
+					//lbl.setStyle("color",String(value[i].color));
+					lbl.text = value[i].label;
+					hg.addElement(lbl);
+					this.addElement(hg);
+				}
+			}
+				
+		]]>
+	</fx:Script>
+	
+</s:TileGroup>

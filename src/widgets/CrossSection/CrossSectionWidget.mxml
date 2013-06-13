@@ -1,0 +1,1037 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+///////////////////////////////////////////////////////////////////////////
+// Copyright (c) 2010-2011 Esri. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+///////////////////////////////////////////////////////////////////////////
+-->
+<viewer:BaseWidget xmlns:esri="http://www.esri.com/2008/ags"
+                   xmlns:fx="http://ns.adobe.com/mxml/2009"
+                   xmlns:s="library://ns.adobe.com/flex/spark"
+                   xmlns:mx="library://ns.adobe.com/flex/mx"
+                   xmlns:viewer="com.esri.viewer.*"
+                   xmlns:components="com.esri.viewer.components.*"
+                   x="600" y="300"
+                   initialize="basewidget_initializeHandler()"
+				   preinitialize="basewidget_preinitializeHandler(event)"
+                   widgetConfigLoaded="basewidget_widgetConfigLoaded()">
+    <fx:Script>
+        <![CDATA[
+			import com.esri.ags.FeatureSet;
+			import com.esri.ags.Graphic;
+			import com.esri.ags.SpatialReference;
+			import com.esri.ags.Units;
+			import com.esri.ags.events.DrawEvent;
+			import com.esri.ags.events.EditEvent;
+			import com.esri.ags.events.GeometryServiceEvent;
+			import com.esri.ags.events.GraphicEvent;
+			import com.esri.ags.geometry.Extent;
+			import com.esri.ags.geometry.Geometry;
+			import com.esri.ags.geometry.MapPoint;
+			import com.esri.ags.geometry.Polygon;
+			import com.esri.ags.geometry.Polyline;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.symbols.SimpleFillSymbol;
+			import com.esri.ags.symbols.SimpleLineSymbol;
+			import com.esri.ags.symbols.SimpleMarkerSymbol;
+			import com.esri.ags.symbols.TextSymbol;
+			import com.esri.ags.tasks.GeometryService;
+			import com.esri.ags.tasks.GeometryServiceSingleton;
+			import com.esri.ags.tasks.QueryTask;
+			import com.esri.ags.tasks.supportClasses.ProjectParameters;
+			import com.esri.ags.tasks.supportClasses.Query;
+			import com.esri.ags.tools.DrawTool;
+			import com.esri.ags.utils.GeometryUtil;
+			import com.esri.ags.utils.WebMercatorUtil;
+			import com.esri.viewer.AppEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.events.FlexEvent;
+			import mx.managers.CursorManager;
+			import mx.managers.CursorManagerPriority;
+			import mx.rpc.AsyncResponder;
+			import mx.rpc.Fault;
+			import mx.rpc.events.FaultEvent;
+			
+			import spark.collections.Sort;
+
+            private const ICON_URL:String = "assets/images/";
+            private const TEXT_MODE:String = "text";
+            private const EPSG_GEOGRAPHIC:Number = 4326;
+
+            
+            //labels
+            [Bindable]
+            private var textLabel:String;
+            [Bindable]
+            private var textColorLabel:String;
+            [Bindable]
+            private var textFontLabel:String;
+            [Bindable]
+            private var textSizeLabel:String;
+            [Bindable]
+            private var textBoldLabel:String;
+            [Bindable]
+            private var textBoldTooltip:String;
+            [Bindable]
+            private var textItalicLabel:String;
+            [Bindable]
+            private var textItalicTooltip:String;
+            [Bindable]
+            private var textUnderlineLabel:String;
+            [Bindable]
+            private var textUnderlineTooltip:String;
+            //points
+            [Bindable]
+            private var addTextLabel:String;
+            [Bindable]
+            private var drawPointLabel:String;
+            [Bindable]
+            private var markerAlphaLabel:String;
+            [Bindable]
+            private var markerColorLabel:String;
+            [Bindable]
+            private var markerSizeLabel:String;
+            [Bindable]
+            private var markerStyleLabel:String;
+            [Bindable]
+            private var markerOutlineColorLabel:String;
+            [Bindable]
+            private var markerOutlineWidthLabel:String;
+
+            // lines
+            [Bindable]
+            private var drawLineLabel:String;
+            [Bindable]
+            private var drawFreehandLineLabel:String;
+            [Bindable]
+            private var lineAlphaLabel:String;
+            [Bindable]
+            private var lineColorLabel:String;
+            [Bindable]
+            private var lineStyleLabel:String;
+            [Bindable]
+            private var lineWidthLabel:String;
+
+            // polygons
+            [Bindable]
+            private var drawPolygonLabel:String;
+            [Bindable]
+            private var drawFreehandPolygonLabel:String;
+            [Bindable]
+            private var drawRectangleLabel:String;
+            [Bindable]
+            private var drawCircleLabel:String;
+            [Bindable]
+            private var drawEllipseLabel:String;
+            [Bindable]
+            private var fillAlphaLabel:String;
+            [Bindable]
+            private var fillColorLabel:String;
+            [Bindable]
+            private var fillStyleLabel:String;
+            [Bindable]
+            private var fillOutlineColorLabel:String;
+            [Bindable]
+            private var fillOutlineWidthLabel:String;
+
+            [Bindable]
+            private var clearLabel:String;
+            private var clearFeatureLabel:String;
+
+            private var areaLabel:String;
+            [Bindable]
+            private var areaUnitsLabel:String;
+            [Bindable]
+            private var distanceUnitsLabel:String;
+            [Bindable]
+            private var showMeasurements:Boolean;
+            [Bindable]
+            private var showmeasurementsLabel:String;
+
+            
+            [Bindable]
+            private var graphicsLayer:GraphicsLayer;
+            [Bindable]
+            private var drawingPoint:Boolean;
+            [Bindable]
+            private var addingText:Boolean;
+            [Bindable]
+            private var drawingLine:Boolean;
+            [Bindable]
+            private var drawingPolygon:Boolean;
+            [Bindable]
+            private var defaultDrawColor:uint;
+            [Bindable]
+            private var defaultTextFontSize:Number;
+
+            [Bindable]
+            private var hasDrawnGraphics:Boolean;
+
+            private var drawMode:String;
+            private var lengthLabel:String;
+            private var perimeterLabel:String;
+            private var measurePt:MapPoint;
+            private var drawType:String;
+            private var drawStatus:String;
+            private var selectedDrawingIcon:FocusableImage;
+            private var lastDrawnGraphic:Graphic;
+            private var editGraphic:Graphic;
+            private var isEditing:Boolean;
+            private var lastActiveEditType:String = "none"; // edit tool is not active
+			
+			private var query:Query;
+			private var queryTask:QueryTask;
+
+            [Embed(source="/assets/images/move_cursor.png")]
+            private var moveCursorIcon:Class;
+			
+			
+			[Bindable]
+			private var selectedPipes:ArrayCollection = new ArrayCollection();
+		
+
+            private var graphicToMeasurementGraphic:Dictionary = new Dictionary(true);
+
+            private function basewidget_initializeHandler():void
+            {
+                if (isPartOfPanel) // if widget is part of "left", "right" or "bottom" panel
+                {
+                    this.percentWidth = this.percentHeight = 100;
+                    wTemplate.percentWidth = wTemplate.percentHeight = 100;
+                }
+                else
+                {
+                    wTemplate.width = wTemplate.minWidth = 420;
+                    wTemplate.height = wTemplate.minHeight = 300;
+                }
+				
+				
+				
+            }
+
+            private function basewidget_widgetConfigLoaded():void
+            {
+                graphicsLayer = new GraphicsLayer();
+                map.addLayer(graphicsLayer);
+
+                if (configXML)
+                {
+                    
+
+                    graphicsLayer.name = configXML.layername || widgetTitle;
+					query = new Query();
+					query.outSpatialReference = map.spatialReference;
+					query.outFields=["*"];
+					query.returnGeometry = true;
+					
+					queryTask = new QueryTask(configXML.dataLayer);
+					queryTask.useAMF = false;
+				}
+                AppEvent.addListener(AppEvent.DATA_PUBLISH, sharedDataUpdated);
+            }
+
+           
+			private function basewidget_preinitializeHandler(event:FlexEvent):void
+			{
+				// work-around for 4.6 regression
+				copyStyleFromParent("mx.charts.chartClasses.ChartBase");
+				copyStyleFromParent("mx.charts.chartClasses.CartesianChart");
+				copyStyleFromParent("mx.charts.chartClasses.PolarChart");
+				copyStyleFromParent("mx.charts.BarChart");
+				copyStyleFromParent("mx.charts.ColumnChart");
+				copyStyleFromParent("mx.charts.LineChart");
+				copyStyleFromParent("mx.charts.PieChart");
+				copyStyleFromParent("mx.charts.BubbleChart");
+				copyStyleFromParent("mx.charts.AxisRenderer");
+				copyStyleFromParent(".blockCategoryAxis");
+				copyStyleFromParent(".blockNumericAxis");
+				copyStyleFromParent(".linedNumericAxis");
+				copyStyleFromParent(".dashedNumericAxis");
+				copyStyleFromParent(".dashedCategoryAxis");
+				copyStyleFromParent(".hangingCategoryAxis");
+				copyStyleFromParent("mx.charts.GridLines");
+				copyStyleFromParent(".horizontalGridLines");
+				copyStyleFromParent("mx.charts.series.BarSeries");
+				copyStyleFromParent("mx.charts.series.ColumnSeries");
+				copyStyleFromParent("mx.charts.series.LineSeries");
+				copyStyleFromParent("mx.charts.series.PieSeries");
+				copyStyleFromParent("mx.charts.series.BubbleSeries");
+			}
+			
+			private function copyStyleFromParent(selector:String):void
+			{
+				var chartBaseStyle:CSSStyleDeclaration = styleManager.getStyleDeclaration(selector);
+				if (!chartBaseStyle && styleManager.parent)
+				{
+					var parentStyle:CSSStyleDeclaration = styleManager.parent.getStyleDeclaration(selector);
+					if (parentStyle)
+					{
+						styleManager.setStyleDeclaration(selector, parentStyle, false);
+					}
+				}
+			}
+
+			private function doSectionQuery(g:Geometry):void
+			{
+				// clear the graphics layer
+				query.where="1=1";
+				query.geometry=g; 
+				
+				selectedPipes.removeAll();
+				queryTask.execute(query, new AsyncResponder(onResult, onFault));
+				function onResult(featureSet:FeatureSet, token:Object = null):void
+				{
+					
+					grdPipes.dataProvider = queryTask.executeLastResult.attributes;
+					for(var i:Number=0;i<queryTask.executeLastResult.features.length;i++)
+					{
+						var o:Object={
+						 x:i,
+						 y:-queryTask.executeLastResult.features[i].attributes.QDMS,
+						 d:queryTask.executeLastResult.features[i].attributes.GJ/1000*80
+						};
+						selectedPipes.addItem(o);
+							
+					}
+				}
+				
+				function onFault(info:Object, token:Object = null):void
+				{
+					showError(info.toString());
+				}
+			}
+
+
+            private function sharedDataUpdated(event:AppEvent):void
+            {
+                var data:Object = event.data;
+
+                if (data.key == "Deactivate_DrawTool")
+                {
+                    setMapAction(null, null, null, null);
+                    editTool.deactivate();
+                    if (selectedDrawingIcon)
+                    {
+                        selectedDrawingIcon.filters = [];
+                        selectedDrawingIcon = null;
+                    }
+                }
+            }
+
+            private function activateDrawTool(event:MouseEvent):void
+            {
+                addSharedData("Deactivate_DrawTool", null); // to be able to deactivate drawTool on other widgets
+                editTool.deactivate();
+                lastActiveEditType = "none";
+
+                // apply glow
+                selectedDrawingIcon = FocusableImage(event.currentTarget);
+                clearSelectionFilter();
+                selectedDrawingIcon.filters = [ glowFilter ];
+
+                //frmDraw.visible = true;
+				grpSection.visible = false;
+				graphicsLayer.clear();
+                showMeasurements = false;
+                isEditing = false;
+                drawType = selectedDrawingIcon.name;
+                switch (drawType)
+                {
+                   
+                    case DrawTool.LINE:
+                    {
+                        drawingPoint = addingText = drawingPolygon = false;
+                        drawingLine = true;
+                        showMeasurements = true;
+
+                        drawStatus = drawLineLabel;
+                        setMapAction(drawType, drawStatus, lineSymbol, map_drawEndHandler, map_drawUpdateHandler, false, false);
+                        break;
+                    }
+					case DrawTool.EXTENT:
+					{
+						addingText = drawingPoint = drawingLine = false;
+						drawingPolygon = true;
+						showMeasurements = true;
+						
+						drawStatus = drawRectangleLabel;
+						setMapAction(drawType, drawStatus, fillSymbol, map_drawEndHandler, map_drawUpdateHandler, false, false);
+						break;
+					}
+                  
+                 
+                    
+                   
+                }
+            }
+
+            private function clear():void
+            {
+                graphicsLayer.clear();
+                editTool.deactivate();
+                updateHasDrawnGraphics();
+                clearGraphicToMeasurementGraphic();
+            }
+
+            private function updateHasDrawnGraphics():void
+            {
+                hasDrawnGraphics = graphicsLayer.numGraphics > 0;
+            }
+
+            private function clearGraphicToMeasurementGraphic():void
+            {
+                for (var key:Object in graphicToMeasurementGraphic)
+                {
+                    delete graphicToMeasurementGraphic[key];
+                }
+            }
+
+            private function clearSelectionFilter():void
+            {
+                for (var i:int = 0; i < drawImageGroup.numChildren; i++)
+                {
+                    if (drawImageGroup.getChildAt(i).filters && drawImageGroup.getChildAt(i).filters.length > 0)
+                    {
+                        if (!(selectedDrawingIcon && drawImageGroup.getChildAt(i) === selectedDrawingIcon))
+                        {
+                            drawImageGroup.getChildAt(i).filters = [];
+                        }
+                    }
+                }
+            }
+
+            private function getMeasurementGraphic(graphic:Graphic):Graphic
+            {
+                return graphicToMeasurementGraphic[graphic];
+            }
+
+            private function map_drawUpdateHandler(event:DrawEvent):void
+            {
+                lastDrawnGraphic = event.graphic;
+                
+                if (!lastDrawnGraphic.hasEventListener(GraphicEvent.GRAPHIC_REMOVE))
+                {
+                    lastDrawnGraphic.graphicsLayer.addEventListener(GraphicEvent.GRAPHIC_REMOVE, drawnGraphic_graphicRemoveHandler, false, 0, true);
+                }
+               
+                
+            }
+
+            private function drawnGraphic_graphicRemoveHandler(event:GraphicEvent):void
+            {
+                const measurementGraphic:Graphic = getMeasurementGraphic(event.graphic);
+                if (measurementGraphic)
+                {
+                    graphicsLayer.remove(measurementGraphic);
+                    clearMeasurementGraphic(event.graphic);
+                }
+            }
+
+            private function clearMeasurementGraphic(graphic:Graphic):void
+            {
+                graphicToMeasurementGraphic[graphic] = null;
+            }
+
+            private function map_drawEndHandler(event:DrawEvent):void
+            {
+                selectedDrawingIcon = null;
+                clearSelectionFilter();
+                event.target.deactivate();
+
+                lastDrawnGraphic = event.graphic;
+
+                var customContextMenu:ContextMenu = new ContextMenu();
+                customContextMenu.hideBuiltInItems();
+                var menuItem:ContextMenuItem = new ContextMenuItem(clearFeatureLabel);
+                menuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, menuItem_contextMenuDeleteHandler);
+                customContextMenu.customItems.push(menuItem);
+                lastDrawnGraphic.contextMenu = customContextMenu;
+
+                lastDrawnGraphic.addEventListener(MouseEvent.CLICK, graphic_clickHandler, false, 0, true);
+                graphicsLayer.add(lastDrawnGraphic);
+				
+				grpSection.visible = true;
+
+                var geom:Geometry = lastDrawnGraphic.geometry;
+                switch (geom.type)
+                {
+                    
+                    case Geometry.POLYLINE:
+						case Geometry.EXTENT:
+                    {
+                        //lastDrawnGraphic.symbol = new SimpleLineSymbol(lineStyle.selectedItem.style, cpLine.selectedColor, numLineAlpha.value, numLineWidth.value);
+                        
+                            
+                       doSectionQuery(geom);
+                        break;
+                    }
+                    
+                    
+                }
+
+                updateHasDrawnGraphics();
+                moveMeasurementGraphicToTop(lastDrawnGraphic);
+            }
+
+            private function menuItem_contextMenuDeleteHandler(event:ContextMenuEvent):void
+            {
+                const drawnGraphic:Graphic = Graphic(event.contextMenuOwner);
+                graphicsLayer.remove(drawnGraphic);
+                // also remove measurement label if any
+                graphicsLayer.remove(getMeasurementGraphic(drawnGraphic));
+                editTool.deactivate();
+                updateHasDrawnGraphics();
+            }
+
+            private function moveMeasurementGraphicToTop(drawnGraphic:Graphic):void
+            {
+                const measurementGraphic:Graphic = getMeasurementGraphic(drawnGraphic);
+                if (measurementGraphic)
+                {
+                    measurementGraphic.graphicsLayer.moveToTop(measurementGraphic);
+                }
+            }
+
+            private function drawIcon_rollOverHandler(event:MouseEvent):void
+            {
+                clearSelectionFilter();
+                event.target.filters = [ glowFilter ];
+            }
+
+            private function drawIcon_rollOutHandler(event:MouseEvent):void
+            {
+                clearSelectionFilter();
+            }
+
+            private function graphic_clickHandler(event:MouseEvent):void
+            {
+                if (editGraphic !== Graphic(event.currentTarget))
+                {
+                    editGraphic = Graphic(event.currentTarget);
+                    lastActiveEditType = "none"; // make sure move and edit vertices is the 1st mode
+                }
+                if (editGraphic.geometry is Polyline || editGraphic.geometry is Polygon)
+                {
+                    if (lastActiveEditType == "none")
+                    {
+                        isEditing = true;
+                        lastActiveEditType = "moveEditVertices";
+                        editTool.activate(EditTool.MOVE | EditTool.EDIT_VERTICES, [ editGraphic ]);
+                        CursorManager.setCursor(moveCursorIcon, CursorManagerPriority.HIGH, -16, -16);
+                    }
+                    else if (lastActiveEditType == "moveEditVertices")
+                    {
+                        isEditing = true;
+                        lastActiveEditType = "moveRotateScale";
+                        editTool.activate(EditTool.MOVE | EditTool.SCALE | EditTool.ROTATE, [ editGraphic ]);
+                        CursorManager.setCursor(moveCursorIcon, CursorManagerPriority.HIGH, -16, -16);
+                    }
+                    else if (lastActiveEditType == "moveRotateScale")
+                    {
+                        isEditing = false;
+                        editGraphic = null;
+                        lastActiveEditType = "none";
+                        editTool.deactivate();
+                    }
+                }
+                else if (editGraphic.geometry is Extent)
+                {
+                    if (lastActiveEditType == "none")
+                    {
+                        isEditing = true;
+                        lastActiveEditType = "moveScale";
+                        editTool.activate(EditTool.MOVE | EditTool.SCALE, [ editGraphic ]);
+                        CursorManager.setCursor(moveCursorIcon, CursorManagerPriority.HIGH, -16, -16);
+                    }
+                    else
+                    {
+                        isEditing = false;
+                        editGraphic = null;
+                        lastActiveEditType = "none";
+                        editTool.deactivate();
+                    }
+                }
+                else
+                {
+                    if (lastActiveEditType == "none")
+                    {
+                        isEditing = true;
+                        lastActiveEditType = "moveEditVertices";
+                        editTool.activate(EditTool.EDIT_VERTICES | EditTool.MOVE, [ editGraphic ]);
+                        CursorManager.setCursor(moveCursorIcon, CursorManagerPriority.HIGH, -16, -16);
+                    }
+                    else
+                    {
+                        isEditing = false;
+                        editGraphic = null;
+                        lastActiveEditType = "none";
+                        editTool.deactivate();
+                    }
+                }
+
+                removeEditToolEventListeners();
+                map.removeEventListener(MouseEvent.MOUSE_DOWN, map_mouseDownHandler);
+
+                if (editGraphic)
+                {
+                    addEditToolEventListeners();
+                    moveMeasurementGraphicToTop(editGraphic);
+                    map.addEventListener(MouseEvent.MOUSE_DOWN, map_mouseDownHandler);
+                }
+            }
+
+            private function removeEditToolEventListeners():void
+            {
+                editTool.removeEventListener(EditEvent.GRAPHICS_MOVE_START, editTool_editStartHandler);
+                editTool.removeEventListener(EditEvent.GRAPHIC_SCALE_START, editTool_editStartHandler);
+                editTool.removeEventListener(EditEvent.GRAPHIC_ROTATE_START, editTool_editStartHandler);
+
+                editTool.removeEventListener(EditEvent.GRAPHIC_ROTATE, editTool_UpdateHandler);
+                editTool.removeEventListener(EditEvent.GRAPHIC_SCALE, editTool_UpdateHandler);
+                editTool.removeEventListener(EditEvent.GRAPHICS_MOVE, editTool_UpdateHandler);
+                editTool.removeEventListener(EditEvent.VERTEX_MOVE, editTool_UpdateHandler);
+                editTool.removeEventListener(EditEvent.GHOST_VERTEX_MOUSE_MOVE, editTool_UpdateHandler);
+
+                editTool.removeEventListener(EditEvent.VERTEX_ADD, editTool_editStopHandler);
+                editTool.removeEventListener(EditEvent.VERTEX_DELETE, editTool_editStopHandler);
+                editTool.removeEventListener(EditEvent.VERTEX_MOVE_STOP, editTool_editStopHandler);
+                editTool.removeEventListener(EditEvent.GRAPHICS_MOVE_STOP, editTool_editStopHandler);
+                editTool.removeEventListener(EditEvent.GRAPHIC_ROTATE_STOP, editTool_editStopHandler);
+                editTool.removeEventListener(EditEvent.GRAPHIC_SCALE_STOP, editTool_editStopHandler);
+            }
+
+            private function map_mouseDownHandler(event:MouseEvent):void
+            {
+                map.removeEventListener(MouseEvent.MOUSE_DOWN, map_mouseDownHandler);
+                map.addEventListener(MouseEvent.MOUSE_UP, map_mouseUpHandler);
+                map.addEventListener(MouseEvent.MOUSE_MOVE, map_mouseMoveHandler);
+            }
+
+            private function map_mouseUpHandler(event:MouseEvent):void
+            {
+                if (event.target !== editGraphic)
+                {
+                    map.removeEventListener(MouseEvent.MOUSE_UP, map_mouseUpHandler);
+                    map.removeEventListener(MouseEvent.MOUSE_MOVE, map_mouseMoveHandler);
+
+                    isEditing = false;
+                    editGraphic = null;
+                    lastActiveEditType = "none";
+                    editTool.deactivate();
+                }
+            }
+
+            private function map_mouseMoveHandler(event:MouseEvent):void
+            {
+                map.addEventListener(MouseEvent.MOUSE_DOWN, map_mouseDownHandler);
+                map.removeEventListener(MouseEvent.MOUSE_UP, map_mouseUpHandler);
+                map.removeEventListener(MouseEvent.MOUSE_MOVE, map_mouseMoveHandler);
+            }
+
+            private function addEditToolEventListeners():void
+            {
+                editTool.addEventListener(EditEvent.GRAPHICS_MOVE_START, editTool_editStartHandler);
+                editTool.addEventListener(EditEvent.GRAPHIC_SCALE_START, editTool_editStartHandler);
+                editTool.addEventListener(EditEvent.GRAPHIC_ROTATE_START, editTool_editStartHandler);
+
+                editTool.addEventListener(EditEvent.GRAPHIC_ROTATE, editTool_UpdateHandler);
+                editTool.addEventListener(EditEvent.GRAPHIC_SCALE, editTool_UpdateHandler);
+                editTool.addEventListener(EditEvent.GRAPHICS_MOVE, editTool_UpdateHandler);
+                editTool.addEventListener(EditEvent.VERTEX_MOVE, editTool_UpdateHandler);
+                editTool.addEventListener(EditEvent.GHOST_VERTEX_MOUSE_MOVE, editTool_UpdateHandler);
+
+                editTool.addEventListener(EditEvent.VERTEX_ADD, editTool_editStopHandler);
+                editTool.addEventListener(EditEvent.VERTEX_DELETE, editTool_editStopHandler);
+                editTool.addEventListener(EditEvent.VERTEX_MOVE_STOP, editTool_editStopHandler);
+                editTool.addEventListener(EditEvent.GRAPHICS_MOVE_STOP, editTool_editStopHandler);
+                editTool.addEventListener(EditEvent.GRAPHIC_ROTATE_STOP, editTool_editStopHandler);
+                editTool.addEventListener(EditEvent.GRAPHIC_SCALE_STOP, editTool_editStopHandler);
+            }
+
+            private function editTool_editStopHandler(event:EditEvent):void
+            {
+                if (!(event.graphic || event.graphics))
+                {
+                    return;
+                }
+
+                var editedGraphic:Graphic = event.graphic ? event.graphic : event.graphics[0];
+
+                if (map.wrapAround180)
+                {
+                    normalizeGraphicGeometry(editedGraphic);
+                }
+                else if (getMeasurementGraphic(editedGraphic))
+                {
+                   
+                }
+            }
+
+            private function normalizeGraphicGeometry(graphic:Graphic):void
+            {
+                // normalize
+                GeometryUtil.normalizeCentralMeridian([ graphic.geometry ], GeometryServiceSingleton.instance, new AsyncResponder(getNormalizedGeometryFunction, faultFunction));
+                function getNormalizedGeometryFunction(item:Object, token:Object = null):void
+                {
+                    var normalizedGeometries:Array = item as Array;
+                    graphic.geometry = normalizedGeometries[0];
+                    isEditing = true;
+                    if (graphic.geometry is Polyline || graphic.geometry is Polygon)
+                    {
+                        if (lastActiveEditType == "moveScale")
+                        {
+                            lastActiveEditType = "moveEditVertices"; // after normalization, if extent crosses the dateline, it is converted to a polygon
+                        }
+                        if (lastActiveEditType == "moveEditVertices")
+                        {
+                            editTool.activate(EditTool.MOVE | EditTool.EDIT_VERTICES, [ graphic ]);
+                        }
+                        else if (lastActiveEditType == "moveRotateScale")
+                        {
+                            editTool.activate(EditTool.MOVE | EditTool.SCALE | EditTool.ROTATE, [ graphic ]);
+                        }
+                    }
+                    else if (graphic.geometry is Extent)
+                    {
+                        if (lastActiveEditType == "moveScale")
+                        {
+                            editTool.activate(EditTool.MOVE | EditTool.SCALE, [ graphic ]);
+                        }
+                    }
+                    else
+                    {
+                        if (lastActiveEditType == "moveEditVertices")
+                        {
+                            editTool.activate(EditTool.EDIT_VERTICES | EditTool.MOVE, [ graphic ]);
+                        }
+                    }
+                    if (getMeasurementGraphic(graphic))
+                    {
+                        
+                    }
+                }
+                function faultFunction(fault:Fault, token:Object = null):void
+                {
+                    dispatchEvent(new FaultEvent(FaultEvent.FAULT, false, false, fault));
+                }
+            }
+
+           
+           
+
+            private function getPolylineToMeasure(polyline:Polyline):Polyline
+            {
+                var result:Polyline;
+
+                var polylineSR:SpatialReference = polyline.spatialReference;
+                if (polylineSR.wkid == EPSG_GEOGRAPHIC)
+                {
+                    result = polyline;
+                }
+                else if (polylineSR.isWebMercator())
+                {
+                    result = WebMercatorUtil.webMercatorToGeographic(polyline) as Polyline;
+                }
+
+                return result;
+            }
+
+           
+
+            private function addDrawLabel(label:String, graphic:Graphic):void
+            {
+                var measurementGraphic:Graphic = getMeasurementGraphic(graphic);
+                if (measurementGraphic)
+                {
+                    (measurementGraphic.symbol as TextSymbol).text = label;
+                }
+                else
+                {
+                    measurementGraphic = new Graphic(measurePt);
+                    if (!measurementGraphic.symbol)
+                    {
+                        var txtSym:TextSymbol = new TextSymbol(label);
+                        txtSym.yoffset = 8;
+                        var txtFormat:TextFormat = new TextFormat("Arial", 12, 0x000000, true); // black label
+                        txtSym.textFormat = txtFormat;
+                        measurementGraphic.symbol = txtSym;
+                    }
+
+                    // also remove measurement label if any
+                    measurementGraphic.mouseEnabled = false;
+                    measurementGraphic.mouseChildren = false;
+                    measurementGraphic.filters = [ measurementBorderFilter ];
+                    graphicsLayer.add(measurementGraphic);
+
+                    addMeasurementGraphic(graphic, measurementGraphic);
+                }
+            }
+
+            private function addMeasurementGraphic(graphic:Graphic, measurementGraphic:Graphic):void
+            {
+                graphicToMeasurementGraphic[graphic] = measurementGraphic;
+            }
+
+            private function updateMeasureLabelPosition(graphic:Graphic):void
+            {
+                var geom:Geometry = graphic.geometry;
+
+                switch (geom.type)
+                {
+                    case Geometry.POLYLINE:
+                    {
+                        var polyline:Polyline = geom as Polyline;
+                        if (polyline.paths)
+                        {
+                            var polylineExtent:Extent;
+                            if (polyline.paths.length == 1)
+                            {
+                                polylineExtent = polyline.extent;
+                            }
+                            else
+                            {
+                                // Multiple paths, hence show the measurement label at the center of first path
+                                var tempPolyline:Polyline = new Polyline;
+                                tempPolyline.paths = [ polyline.paths[0]];
+                                polylineExtent = tempPolyline.extent;
+                            }
+                            measurePt = polylineExtent.center;
+                        }
+                        break;
+                    }
+                    case Geometry.POLYGON:
+                    {
+                        var polygon:Polygon = geom as Polygon;
+                        if (polygon.rings)
+                        {
+                            var polygonExtent:Extent;
+                            if (polygon.rings.length == 1)
+                            {
+                                polygonExtent = polygon.extent;
+                            }
+                            else if (polygon.rings.length > 1)
+                            {
+                                // Multiple rings, hence show the measurement label at the center of first ring
+                                var tempPolygon:Polygon = new Polygon;
+                                tempPolygon.rings = [ polygon.rings[0]];
+                                polygonExtent = tempPolygon.extent;
+                            }
+                            measurePt = polygonExtent.center;
+                        }
+                        break;
+                    }
+                    case Geometry.EXTENT:
+                    {
+                        measurePt = geom.extent.center;
+                        break;
+                    }
+                }
+
+                var measurementGraphic:Graphic = getMeasurementGraphic(graphic);
+                if (measurementGraphic)
+                {
+                    measurementGraphic.geometry = measurePt;
+                    measurementGraphic.visible = true;
+                }
+            }
+
+            
+
+           
+
+            private function wTemplate_closeHandler(event:Event):void
+            {
+                graphicsLayer.visible = false;
+                //frmDraw.visible = false;
+                showMeasurements = false;
+
+                setMapAction(null, null, null, null); // deactivate drawTool
+
+                if (selectedDrawingIcon)
+                {
+                    selectedDrawingIcon.filters = [];
+                    selectedDrawingIcon = null;
+                }
+            }
+
+            private function wTemplate_openHandler(event:Event):void
+            {
+                if (graphicsLayer)
+                {
+                    graphicsLayer.visible = true;
+                }
+            }
+
+            private function editTool_UpdateHandler(event:EditEvent):void
+            {
+                if (!(event.graphic || event.graphics))
+                {
+                    return;
+                }
+
+                
+            }
+
+            
+
+            private function hideMeasurementLabel(graphic:Graphic):void
+            {
+                graphicToMeasurementGraphic[graphic].visible = false;
+            }
+
+            protected function editTool_editStartHandler(event:EditEvent):void
+            {
+                if (!(event.graphic || event.graphics))
+                {
+                    return;
+                }
+
+                const drawnGraphic:Graphic = event.graphic ? event.graphic : event.graphics[0];
+                moveMeasurementGraphicToTop(drawnGraphic);
+            }
+
+            protected function getLongestString(... rest):String
+            {
+                var longest:String = "";
+                for (var i:int = 0; i < rest.length; i++)
+                {
+                    var n:String = getDefaultString(rest[i]);
+                    longest = n.length > longest.length ? n : longest;
+                }
+                return longest;
+            }
+        ]]>
+    </fx:Script>
+
+    <fx:Declarations>
+		
+			<!-- Define custom color and line style for the bubbles. -->
+			<mx:SolidColor id="sc1" color="blue" alpha=".3"/>
+			<mx:SolidColorStroke id="stroke1" color="blue" weight="1"/>
+		
+        <s:GlowFilter id="glowFilter"
+                      alpha="1"
+                      color="{getStyle('focusColor')}"
+                      inner="true"
+                      strength="2"/>
+
+        <s:GlowFilter id="measurementBorderFilter"
+                      blurX="3"
+                      blurY="3"
+                      color="0xFFFFFF"
+                      strength="7"/>
+
+		<esri:SimpleLineSymbol id="lineSymbol"
+							   
+							   color="0x00FF00"
+							   />
+		
+		<esri:SimpleFillSymbol id="fillSymbol"
+							   alpha="0.5"
+							   color="0xCCCCCC"
+							   >
+			<esri:SimpleLineSymbol width="1" color="0x000000"/>
+		</esri:SimpleFillSymbol>
+
+        <esri:EditTool id="editTool" map="{map}"/>
+    </fx:Declarations>
+
+    <viewer:WidgetTemplate id="wTemplate"
+                           closed="wTemplate_closeHandler(event)"
+                           open="wTemplate_openHandler(event)">
+        <s:VGroup width="100%" height="100%"
+                  gap="2">
+            <s:HGroup id="drawImageGroup"
+                      width="100%"
+                      gap="2"
+                      horizontalAlign="center">
+                
+				
+
+                <components:FocusableImage name="{DrawTool.LINE}"
+                                           width="40" height="40"
+                                           buttonMode="true"
+                                           click="activateDrawTool(event)"
+                                           rollOut="drawIcon_rollOutHandler(event)"
+                                           rollOver="drawIcon_rollOverHandler(event)"
+                                           source="assets/images/i_draw_line.png"
+                                           toolTip="{drawLineLabel}"
+                                           useHandCursor="true"/>
+
+                
+
+                <components:FocusableImage name="{DrawTool.EXTENT}"
+                                           width="40" height="40"
+                                           buttonMode="true"
+                                           click="activateDrawTool(event)"
+                                           rollOut="drawIcon_rollOutHandler(event)"
+                                           rollOver="drawIcon_rollOverHandler(event)"
+                                           source="assets/images/i_draw_rect.png"
+                                           toolTip="{drawRectangleLabel}"
+                                           useHandCursor="true"/>
+
+               
+
+               
+
+            </s:HGroup>
+
+            <s:HGroup width="100%"
+                      horizontalAlign="right"
+                      paddingRight="10"
+                      paddingTop="2">
+                <s:Label buttonMode="true"
+                         click="clear()"
+                         fontWeight="bold"
+                         includeInLayout="{hasDrawnGraphics}"
+                         text="{clearLabel}"
+                         textDecoration="underline"
+                         visible="{hasDrawnGraphics}"/>
+            </s:HGroup>
+			<s:VGroup id="grpSection" visible="false">
+				
+			
+				<mx:BubbleChart id="bubblechart" 
+								height="150" width="100%"
+								paddingRight="5" paddingLeft="5" 
+								showDataTips="true" maxRadius="80"
+								dataProvider="{selectedPipes}" >
+					<mx:series>
+						<mx:BubbleSeries 
+							displayName="横截面" 
+							xField="x" 
+							yField="y" 
+							radiusField="d"
+							fill="{sc1}"
+							stroke="{stroke1}"
+							/>
+					</mx:series>            
+				</mx:BubbleChart>
+				<mx:DataGrid width="400" height="80" id="grdPipes">
+					<mx:columns>  
+						
+						<mx:DataGridColumn dataField="GDBH" headerText="编号" />
+						<mx:DataGridColumn dataField="GC" headerText="管材" />	
+						<mx:DataGridColumn dataField="GJ" headerText="管径" />
+						<mx:DataGridColumn dataField="QDMS" headerText="起点埋深" />
+						<mx:DataGridColumn dataField="ZDMS" headerText="终点埋深" />
+					</mx:columns>
+				</mx:DataGrid>
+			</s:VGroup>
+
+            
+            </s:VGroup>
+    </viewer:WidgetTemplate>
+</viewer:BaseWidget>

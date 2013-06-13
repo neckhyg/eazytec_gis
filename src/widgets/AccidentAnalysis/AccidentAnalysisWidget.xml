@@ -1,0 +1,6 @@
+<configuration>
+
+    <content>Hello World !</content>
+    <pipeLayer>http://122.193.135.87:6080/arcgis/rest/services/Water/MapServer/1</pipeLayer>
+    <valveLayer>http://122.193.135.87:6080/arcgis/rest/services/Water/MapServer/0</valveLayer>
+</configuration>

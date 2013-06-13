@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<books>
+    <category name="古代小说">
+  <publisher name="清华出版">
+   <bookname name="宋代小说"/>
+         <bookname name="明代小说"/>
+         <bookname name="清代小说"/>
+  </publisher>
+     <publisher name="京华出版">
+   <bookname name="宋代小说"/>
+         <bookname name="明代小说"/>
+         <bookname name="清代小说"/>
+            <bookname name="汉代小说"/>
+  </publisher>
+ </category>
+     <category name="现代小说">
+     <publisher name="上海书局">
+   <bookname name="现代book1"/>
+         <bookname name="现代book2"/>
+         <bookname name="现代book3"/>
+    </publisher>
+ </category>
+     <category name="散文">
+     <publisher name="北邮出版">
+   <bookname name="散文1"/>
+         <bookname name="散文2"/>
+         <bookname name="散文3"/>
+    </publisher>
+ </category>
+</books>
